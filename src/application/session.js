@@ -1,10 +1,16 @@
 import * as C from '../core/index.js';
 import { schoolReview } from './school-review.js';
-import { holidayPresets, matchesHoliday, nextUnsetHoliday } from './holidays.js';
+import { holidayPresets, matchesHoliday, nextUnsetHoliday, nextHolidayPreset } from './holidays.js';
 
 export const STEP_MODES = ['inspect', 'range', 'monday', 'first', 'second', 'holiday', 'adjustment'];
 const clone = value => JSON.parse(JSON.stringify(value));
 export function modeOf(state) { return state.finished ? 'inspect' : STEP_MODES[state.step]; }
+/** 末学期考试端点须在十六周及所有前学期考试之后。 */
+export function secondExamEarliest(config) {
+  if (!config.firstMonday) return null;
+  const endOfTeaching = C.addDays(config.firstMonday, 112), lastFirstExam = config.firstExams.at(-1);
+  return lastFirstExam && lastFirstExam >= endOfTeaching ? C.addDays(lastFirstExam, 1) : endOfTeaching;
+}
 export function stepNames(config) {
   const [first, second] = C.TERMS[config.half];
   return ['新建校历', '制表范围', '第一教学周', `${first}学期考试`, `${second}学期考试`, '放假日期', '课程对调与补课'];
@@ -68,6 +74,7 @@ function selectDate(state, date) {
   if (['first', 'second'].includes(mode) && !state.config.firstMonday) {
     throw new Error('请先返回“第一教学周”步骤，选择第一周的周一');
   }
+  if (mode === 'second' && date < secondExamEarliest(state.config)) throw new Error('末学期考试日期应在 16 个教学周及前学期考试结束后');
   state.selected = date;
   switch (mode) {
     case 'range':
@@ -208,8 +215,8 @@ function reduce(state, action) {
     case 'holiday-custom': selectHoliday(state, null); break;
     case 'holiday-cancel': resetHoliday(state); break;
     case 'holiday-skip': {
-      const names = holidayPresets(state.config.half);
-      selectHoliday(state, nextUnsetHoliday(state.config, state.holiday.preset) || names[(names.indexOf(state.holiday.preset) + 1) % names.length]);
+      const next = nextHolidayPreset(state.config, state.holiday.preset);
+      if (next) selectHoliday(state, next);
       break;
     }
     case 'holiday-save': saveHoliday(state); break;

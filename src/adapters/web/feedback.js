@@ -117,4 +117,6 @@ export function mountFeedback() {
   });
   document.fonts?.ready.then(schedule);
   schedule();
+  // 导航测量前同步布局，避免居中留白在下一帧才变化。
+  return { refreshLayout: refreshEdges };
 }

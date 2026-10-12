@@ -14,6 +14,15 @@ html.navigation-motion,html.navigation-motion body {
   overflow-anchor:none
 }
 
+.canvas { position:relative; }
+.motion-calendar-snapshot {
+  position:absolute;
+  z-index:4;
+  margin:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+
 html.navigation-motion .settings {
   display:flex;
   flex-direction:column
@@ -164,6 +173,7 @@ html.navigation-motion .settings .step-navigation {
 }
 
 @media print {
+  .motion-calendar-snapshot { display:none; }
   *,*::before,*::after {
     animation:none!important;
     transition:none!important;

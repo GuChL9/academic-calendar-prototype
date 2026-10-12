@@ -18,6 +18,43 @@ export function mountMotion() {
   let navigation = null;
   let pendingPosition = null;
 
+  function captureCalendar() {
+    if (!allowed()) return null;
+    const table = calendar.querySelector('.calendar-table');
+    if (!table) return null;
+    const rect = calendar.getBoundingClientRect(), parent = canvas.getBoundingClientRect();
+    const dates = [...calendar.querySelectorAll('.date-button[data-date]')];
+    const positions = new Map(dates.map(button => [button.dataset.date, button.getBoundingClientRect().left]));
+    return { clone:calendar.cloneNode(true), signature:dates.map(button => button.dataset.date).join(','), positions,
+      width:rect.width, height:rect.height, left:rect.left-parent.left, top:rect.top-parent.top,
+      center:rect.left+rect.width/2, tableWidth:table.offsetWidth, scrollLeft:calendar.scrollLeft, scrollTop:calendar.scrollTop };
+  }
+
+  function prepareCalendar(state, before) {
+    if (!before) return false;
+    const table = calendar.querySelector('.calendar-table');
+    const dates = [...calendar.querySelectorAll('.date-button[data-date]')];
+    if (!table || (before.signature === dates.map(button => button.dataset.date).join(',') && before.tableWidth === table.offsetWidth)) return false;
+    // 旧表保留一份不可交互的视觉快照，裁剪与展开沿导航时间线交接，日期文字不缩放。
+    const outgoing = before.clone;
+    outgoing.removeAttribute('id');
+    outgoing.removeAttribute('tabindex');
+    outgoing.setAttribute('aria-hidden','true');
+    outgoing.inert = true;
+    for (const node of outgoing.querySelectorAll('[id]')) node.removeAttribute('id');
+    outgoing.classList.add('motion-calendar-snapshot');
+    Object.assign(outgoing.style, { left:before.left+'px', top:before.top+'px', width:before.width+'px', height:before.height+'px', margin:'0', opacity:'1', transform:'none' });
+    canvas.append(outgoing);
+    outgoing.scrollLeft = before.scrollLeft;
+    outgoing.scrollTop = before.scrollTop;
+    const shared = dates.filter(button => before.positions.has(button.dataset.date))
+      .sort((a,b) => Math.abs(before.positions.get(a.dataset.date)-before.center)-Math.abs(before.positions.get(b.dataset.date)-before.center))[0];
+    state.calendarX = shared ? before.positions.get(shared.dataset.date)-shared.getBoundingClientRect().left : 0;
+    state.outgoing = outgoing;
+    calendar.style.opacity = '0';
+    return true;
+  }
+
   function restoreNavigation() {
     if (!navigation) return;
     cancelAnimationFrame(navigation.frame);
@@ -26,6 +63,8 @@ export function mountMotion() {
       item.element.style.overflow = item.overflow;
     }
     calendar.style.transform = navigation.calendarTransform;
+    calendar.style.opacity = navigation.calendarOpacity;
+    navigation.outgoing?.remove();
     document.body.style.minHeight = navigation.minHeight;
     root.classList.remove('navigation-motion');
     navigation = null;
@@ -37,9 +76,11 @@ export function mountMotion() {
     const startY = window.scrollY;
     const documentHeight = Math.max(root.scrollHeight,window.innerHeight);
     restoreNavigation();
+    const previousCalendar = captureCalendar();
     const state = {
       boxes:boxes.map(item => ({...item,height:item.element.style.height,overflow:item.element.style.overflow})),
-      minHeight:document.body.style.minHeight, calendarTransform:calendar.style.transform, frame:0, target:null
+      minHeight:document.body.style.minHeight, calendarTransform:calendar.style.transform, calendarOpacity:calendar.style.opacity,
+      calendarX:0, outgoing:null, frame:0, target:null
     };
     navigation = state;
     root.classList.add('navigation-motion');
@@ -67,11 +108,12 @@ export function mountMotion() {
     if (targetRect && (targetTop-startY < 20 || targetTop+targetRect.height-startY > window.innerHeight-20)) {
       endY = Math.max(0,Math.min(targetTop-24,maxY));
     }
-    const unchanged = state.boxes.every(item => Math.abs(item.end-item.start)<.5) && Math.abs(endY-startY)<1 && Math.abs(calendarDelta)<.5;
+    const calendarChanged = prepareCalendar(state, previousCalendar);
+    const unchanged = !calendarChanged && state.boxes.every(item => Math.abs(item.end-item.start)<.5) && Math.abs(endY-startY)<1 && Math.abs(calendarDelta)<.5;
     if (!allowed() || unchanged) { restoreNavigation(); window.scrollTo({top:endY,behavior:'auto'}); return; }
     document.body.style.minHeight = Math.max(documentHeight,root.scrollHeight)+'px';
     for (const item of state.boxes) item.element.style.height = item.start+'px';
-    if (Math.abs(calendarDelta)>.5) calendar.style.transform = `translateY(${calendarDelta}px)`;
+    if (calendarChanged || Math.abs(calendarDelta)>.5) calendar.style.transform = `translate(${state.calendarX}px,${calendarDelta}px)`;
     window.scrollTo({top:startY,behavior:'auto'});
     const began = performance.now();
     const milliseconds = root.dataset.theme === 'mist' ? 360 : 400;
@@ -82,7 +124,12 @@ export function mountMotion() {
       for (const item of state.boxes) {
         if (!item.element.hidden) item.element.style.height = (item.start+(item.end-item.start)*eased)+'px';
       }
-      if (Math.abs(calendarDelta)>.5) calendar.style.transform = `translateY(${calendarDelta*(1-eased)}px)`;
+      if (calendarChanged || Math.abs(calendarDelta)>.5) calendar.style.transform = `translate(${state.calendarX*(1-eased)}px,${calendarDelta*(1-eased)}px)`;
+      if (calendarChanged) {
+        calendar.style.opacity = String(eased);
+        state.outgoing.style.opacity = String(1-eased);
+        state.outgoing.style.transform = `translateX(${-state.calendarX*eased}px)`;
+      }
       window.scrollTo({top:startY+(endY-startY)*eased,behavior:'auto'});
       if (progress < 1) state.frame = requestAnimationFrame(tick);
       else { restoreNavigation(); window.scrollTo({top:endY,behavior:'auto'}); }
@@ -97,6 +144,7 @@ export function mountMotion() {
   window.addEventListener('wheel',restoreNavigation,{passive:true});
   window.addEventListener('touchstart',restoreNavigation,{passive:true});
   window.addEventListener('resize',restoreNavigation,{passive:true});
+  calendar.addEventListener('pointerdown',restoreNavigation,{passive:true});
   document.addEventListener('keydown',event => {
     if (['PageUp','PageDown','Home','End','ArrowUp','ArrowDown','Escape','Tab'].includes(event.key)) restoreNavigation();
   });

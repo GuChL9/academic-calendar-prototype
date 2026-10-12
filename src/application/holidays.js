@@ -7,9 +7,12 @@ export function matchesHoliday(record, name) {
 }
 export function nextUnsetHoliday(config, after = null) {
   const names = holidayPresets(config.half), start = names.indexOf(after);
-  for (let offset = 1; offset <= names.length; offset++) {
-    const name = names[(start + offset) % names.length];
-    if (name !== after && !config.holidays.some(record => matchesHoliday(record, name))) return name;
+  for (const name of names.slice(start + 1)) {
+    if (!config.holidays.some(record => matchesHoliday(record, name))) return name;
   }
   return null;
+}
+export function nextHolidayPreset(config, after) {
+  const names = holidayPresets(config.half), index = names.indexOf(after);
+  return index < 0 ? null : nextUnsetHoliday(config, after) || names[index + 1] || null;
 }

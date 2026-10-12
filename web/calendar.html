@@ -21,7 +21,6 @@
           <span class="calendar-edge calendar-edge-left" aria-hidden="true" hidden></span>
           <span class="calendar-edge calendar-edge-right" aria-hidden="true" hidden></span>
         </div>
-        <div id="adjustment-preview" class="adjustment-preview" aria-live="polite" hidden></div>
         <div id="day-detail" class="day-detail" hidden></div>
       </div>
         <div class="legend calendar-legend" aria-label="图例"><span><i class="legend-exam"></i>考 · 考试</span><span><i class="legend-vacation"></i>寒暑假</span><span><i class="legend-holiday"></i>休 · 放假</span><span>调 · 对调</span><span>补 · 补课</span><span id="range-legend" hidden><i class="legend-range"></i>已选范围</span></div>
@@ -64,12 +63,12 @@
         <div id="holiday-name-field" class="step-fields"><div><label for="holiday-name">放假名称</label><input id="holiday-name" maxlength="80" placeholder="填写其他放假名称"></div></div>
         <p id="holiday-empty" class="hint" aria-live="polite">已选 0 天</p>
         <details id="holiday-dates" class="foldout date-foldout" hidden><summary id="holiday-selection" aria-live="polite"></summary><div id="holiday-date-list" class="exam-list" aria-label="已选放假日期"></div></details>
-        <div class="step-actions"><button id="save-holiday" class="primary">保存假期</button><button id="skip-holiday" class="text-button">暂时跳过</button><button id="custom-holiday" class="text-button">其他放假</button><button id="cancel-holiday" class="text-button" hidden>取消编辑</button></div>
+        <div class="step-actions holiday-actions"><button id="save-holiday" class="primary">保存假期</button><button id="skip-holiday" class="text-button">暂时跳过</button><button id="cancel-holiday" class="text-button" hidden>取消编辑</button><button id="custom-holiday" class="text-button">其他放假</button></div>
         <details id="holiday-records" class="foldout records-foldout" hidden><summary id="holiday-record-count"></summary><div id="holiday-list" class="arrangement-list"></div></details>
       </section>
       <section class="step" aria-labelledby="step-adjustments-title" hidden><h2 id="step-adjustments-title" tabindex="-1">课程对调与补课</h2>
         <div id="adjustment-kind" class="adjustment-options" role="group" aria-label="调整方式"><button type="button" data-adjustment-kind="swap" aria-pressed="true">课程对调</button><button type="button" data-adjustment-kind="makeup" aria-pressed="false">补课</button></div>
-        <p id="adjustment-hint" class="hint" hidden></p>
+        <div class="adjustment-summary"><p id="adjustment-hint" class="hint" hidden></p><div id="adjustment-preview" class="adjustment-preview" aria-live="polite" hidden></div></div>
         <div class="step-actions"><button id="save-adjustment" class="primary">添加调课</button><button id="clear-adjustment" class="text-button" hidden>清除选择</button><button id="cancel-adjustment" class="text-button" hidden>取消编辑</button></div>
         <details id="adjustment-records" class="foldout records-foldout" hidden><summary id="adjustment-record-count"></summary><div id="adjustment-list" class="arrangement-list"></div></details>
       </section>

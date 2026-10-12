@@ -1,6 +1,6 @@
 import * as C from '../../core/index.js';
-import { modeOf, previewConfig, holidayChanged } from '../../application/session.js';
-import { holidayPresets as presets, nextUnsetHoliday as nextHoliday, matchesHoliday } from '../../application/holidays.js';
+import { modeOf, previewConfig, holidayChanged, secondExamEarliest } from '../../application/session.js';
+import { holidayPresets as presets, nextUnsetHoliday as nextHoliday, nextHolidayPreset, matchesHoliday } from '../../application/holidays.js';
 import { escape, formatDisplayDate, formatDisplayRange, shortDate } from './format.js';
 
 /** 将一次制表快照呈现到固定界面；配置变更由制表会话统一处理。 */
@@ -80,12 +80,14 @@ export function createRenderer(calendarKeyboard) {
   }
   function dateButton(day) {
     const role = adjustmentRole(day.date), links = adjustmentLinks(day.date);
+    const earliest = mode === 'second' ? secondExamEarliest(config) : null;
+    const unavailable = mode === 'monday' ? day.weekday !== 1 : mode === 'second' && (!earliest || day.date < earliest);
     const description = [formatDisplayDate(day.date), day.weekdayLabel, day.teachingLabel, ...day.exams.map(x => x + '学期考试'), day.vacation,
       ...day.holidays.map(h => `${h.name}放假`), ...links.map(x=>x.description), role>=0 ? `已选${role===0?' A':' B'}` : ''].filter(Boolean).join('，');
     const pressed = mode === 'monday' ? config.firstMonday === day.date : currentStep === 6 && (mode === 'adjustment' || adjustmentSelection.some(Boolean)) ? role >= 0 : mode === 'holiday' ? holidaySelection.includes(day.date) : mode === 'first' ? config.firstExams.includes(day.date) : currentStep === 1 ? Boolean(anchor === day.date || rangeClasses(day)) : selected === day.date;
     const marks = C.dayMarkers(day);
     const inspecting = currentStep !== 1 && (currentStep !== 6 || (mode !== 'adjustment' && !adjustmentSelection.some(Boolean)));
-    return `<button type="button" class="date-button ${role>=0?'adjustment-picked adjustment-'+role+' ':''}${links.length?'has-adjustment ':''}${(mode === 'monday' ? (pressed ? 'selected ' : '') : mode === 'holiday' ? (pressed ? 'holiday-picked ' : '') : inspecting && selected === day.date ? 'selected ' : '') + (anchor === day.date ? 'anchor' : '')}" data-date="${day.date}" data-linked-dates="${[...new Set(links.map(link=>link.target))].join(' ')}" ${mode==='monday' && day.weekday!==1?'disabled ':''}aria-label="${escape(description)}" aria-pressed="${pressed}" title="${escape(description)}"><span class="date-number">${day.day}</span>${marks ? `<em class="date-markers" aria-hidden="true">${[...marks].map(mark => `<span>${mark}</span>`).join('')}</em>` : ''}${role>=0?`<b class="adjustment-role" aria-hidden="true">${role===0?'A':'B'}</b>`:''}${links.length?`<small class="adjustment-link" aria-hidden="true">${links[0].text}${links.length>1?' +':''}</small>`:''}</button>`;
+    return `<button type="button" class="date-button ${role>=0?'adjustment-picked adjustment-'+role+' ':''}${links.length?'has-adjustment ':''}${(mode === 'monday' ? (pressed ? 'selected ' : '') : mode === 'holiday' ? (pressed ? 'holiday-picked ' : '') : inspecting && selected === day.date ? 'selected ' : '') + (anchor === day.date ? 'anchor' : '')}" data-date="${day.date}" data-linked-dates="${[...new Set(links.map(link=>link.target))].join(' ')}" ${unavailable?'disabled ':''}aria-label="${escape(description)}" aria-pressed="${pressed}" title="${escape(description)}"><span class="date-number">${day.day}</span>${marks ? `<em class="date-markers" aria-hidden="true">${[...marks].map(mark => `<span>${mark}</span>`).join('')}</em>` : ''}${role>=0?`<b class="adjustment-role" aria-hidden="true">${role===0?'A':'B'}</b>`:''}${links.length?`<small class="adjustment-link" aria-hidden="true">${links[0].text}${links.length>1?' +':''}</small>`:''}</button>`;
   }
   function renderCalendar() {
     const target = $('calendar-container'), calendar = currentCalendar();
@@ -168,8 +170,12 @@ export function createRenderer(calendarKeyboard) {
     $('holiday-shared').hidden = !shared;
     $('holiday-shared').textContent = shared ? `沿用合并记录“${record.name}”，修改后对应节日会一起更新。` : '';
     $('save-holiday').textContent = holidayPreset && nextUnsetHoliday(holidayPreset) ? '保存并设置下一个节日' : editingHoliday === null ? '保存假期' : '保存修改';
-    $('skip-holiday').hidden = !holidayPreset;
-    $('cancel-holiday').hidden = !holidayChanged(snapshot) && editingHoliday === null && Boolean(holidayPreset);
+    const changed = holidayChanged(snapshot);
+    // 未设置可跳过，已保存可继续；修改中的取消操作共用同一位置。
+    $('skip-holiday').textContent = record ? '下个节日' : '暂时跳过';
+    $('skip-holiday').hidden = !holidayPreset || changed;
+    $('skip-holiday').disabled = !nextHolidayPreset(config, holidayPreset);
+    $('cancel-holiday').hidden = Boolean(holidayPreset) && !changed;
     updateHolidaySelection();
   }
   function updateAdjustmentLabels() {
@@ -180,7 +186,7 @@ export function createRenderer(calendarKeyboard) {
     $('adjustment-preview').textContent = a && b ? `${makeup?`${formatDisplayDate(a)} 补 ${formatDisplayDate(b)} 的课程`:`${formatDisplayDate(a)} ↔ ${formatDisplayDate(b)}`} · 未保存` : a ? `${makeup?'实际补课日':'日期 A'}：${formatDisplayDate(a)}` : b ? `${makeup?'原课程日':'日期 B'}：${formatDisplayDate(b)}` : '';
     $('clear-adjustment').hidden = !a && !b;
     $('adjustment-hint').textContent = makeup ? '补课只调整实际补课日，原日期不变。' : '';
-    $('adjustment-hint').hidden = !$('adjustment-hint').textContent;
+    $('adjustment-hint').hidden = !$('adjustment-hint').textContent || Boolean(a || b);
   }
   let sourceKey = '';
   function renderSchoolSource(source) {

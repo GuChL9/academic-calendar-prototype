@@ -63,6 +63,15 @@
 .settings .holiday-preset { min-height:36px; padding-block:6px; }
 .settings .foldout>summary { padding-block:4px; }
 .settings .records-foldout { margin-top:6px; }
+/* 空计数与可展开计数占用同一行；跳过与取消共用一个操作位置。 */
+.settings #holiday-empty { display:flex; align-items:center; justify-content:center; min-height:32px; margin:8px 0 0; line-height:18px; }
+.settings .date-foldout { margin-top:8px; }
+.settings .date-foldout>summary { min-height:32px; padding-block:7px; line-height:18px; }
+.holiday-actions { align-content:center; }
+.adjustment-summary { display:grid; place-items:center; min-height:32px; margin-top:4px; }
+.adjustment-summary .hint { margin:0; line-height:20px; text-align:center; }
+.adjustment-summary .adjustment-preview { padding:0; border:0; background:transparent; line-height:20px; color:var(--muted); }
+.step[aria-labelledby="step-adjustments-title"] .mode-banner { min-height:21px; }
 .step-navigation { padding-top:8px; }
 .compact .calendar-table td { height:39px; }
 .compact .calendar-table .date-button { height:38px; }
@@ -76,6 +85,8 @@
   .school-notes>summary { margin-inline:auto; }
 }
 @media(max-width:520px) {
+  .adjustment-summary { min-height:44px; }
+  .step[aria-labelledby="step-adjustments-title"] .mode-banner { min-height:41px; }
   .creation-actions { gap:8px; }
   .creation-actions button { flex:1; min-width:0; padding-inline:10px; }
   .calendar-legend { gap:6px 10px; font-size:10px; }

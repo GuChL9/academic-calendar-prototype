@@ -40,7 +40,7 @@ function remember(state, configChanged) {
 render(session.getState());
 remember(session.getState(), false);
 const motion = mountMotion();
-mountFeedback();
+const feedback = mountFeedback();
 
 /** 用户动作只进入一个制表会话；呈现、持久化和焦点处理消费同一结果。 */
 function dispatch(action, navigation = false) {
@@ -50,6 +50,7 @@ function dispatch(action, navigation = false) {
     render(state);
     schoolImport?.update(state);
     stepNavigation?.update(state);
+    feedback?.refreshLayout();
     const saved = remember(state, state.revision !== before.revision);
     if (state.message && saved) toast(state.message);
     if (action.type === 'select-date') keyboard.focusDate(action.date);
@@ -66,7 +67,8 @@ function dispatch(action, navigation = false) {
     if (action.type === 'holiday-edit') $('save-holiday').focus();
     if (action.type === 'adjustment-edit') $('adjustment-kind').querySelector('[aria-pressed="true"]').focus();
   };
-  try { navigation ? motion.navigate(update) : update(); }
+  const transition = navigation || ['undo', 'import', 'density'].includes(action.type);
+  try { transition ? motion.navigate(update) : update(); }
   catch (error) { toast('未应用：' + error.message, true); }
 }
 function click(id, type, navigation = false) {

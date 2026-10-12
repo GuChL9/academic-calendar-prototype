@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { blankConfig, exportData, generateCalendar, normalizeConfig } from '../src/core/index.js';
-import { createSession, modeOf, previewConfig } from '../src/application/session.js';
+import { addDays, blankConfig, exportData, generateCalendar, normalizeConfig } from '../src/core/index.js';
+import { createSession, modeOf, previewConfig, secondExamEarliest } from '../src/application/session.js';
 import { examples } from './fixtures.js';
 
 const open = (step, config = examples.autumn) => createSession(config, { currentStep: step });
@@ -75,6 +75,37 @@ test('秋春考试逐日切换，冬夏考试两端点即保存', () => {
   assert.equal(session.getState().config.secondExams.end, '2024-01-08');
 });
 
+test('冬夏考试首尾端点提前限制在十六周结束后，拒绝选日不产生草稿', () => {
+  for (const config of Object.values(examples)) {
+    const session = open(4, config), earliest = addDays(config.firstMonday, 112);
+    assert.equal(secondExamEarliest(session.getState().config), earliest);
+    const before = session.getState();
+    for (const date of [config.range.start, config.firstMonday, addDays(earliest, -1)]) {
+      assert.throws(() => pick(session, date), /16 个教学周/);
+      assert.deepEqual(session.getState(), before);
+    }
+    pick(session, addDays(earliest, 2));
+    const anchored = session.getState();
+    assert.throws(() => pick(session, addDays(earliest, -1)), /16 个教学周/);
+    assert.deepEqual(session.getState(), anchored);
+    pick(session, earliest);
+    assert.deepEqual(session.getState().config.secondExams, { start:earliest, end:addDays(earliest, 2) });
+  }
+});
+
+test('末学期考试端点同时避开前学期考试，未设置周一时保持原状态', () => {
+  const earliest = addDays(examples.autumn.firstMonday, 112);
+  const config = { ...examples.autumn, firstExams:[addDays(earliest, 1)], secondExams:null };
+  const session = open(4, config);
+  assert.equal(secondExamEarliest(session.getState().config), addDays(earliest, 2));
+  assert.throws(() => pick(session, earliest), /前学期考试/);
+  assert.equal(session.getState().anchor, null);
+  const blank = open(4, blankConfig(2023)), before = blank.getState();
+  assert.equal(secondExamEarliest(before.config), null);
+  assert.throws(() => pick(blank, '2024-01-15'), /第一教学周/);
+  assert.deepEqual(blank.getState(), before);
+});
+
 test('节假日草稿只用于预览，保存后继续下一预设', () => {
   const session = open(5);
   assert.equal(session.getState().holiday.preset, '中秋节');
@@ -92,6 +123,35 @@ test('节假日草稿只用于预览，保存后继续下一预设', () => {
   pick(session, '2023-10-02'); act(session, 'holiday-skip');
   assert.equal(session.getState().config.holidays.length, 1);
   assert.equal(session.getState().holiday.preset, '元旦');
+});
+
+test('跳过节日只向后推进，末项停留且保存后不回到前面的空项', () => {
+  for (const [half, names] of [['autumn',['中秋节','国庆节','元旦']], ['spring',['清明节','劳动节','端午节']]]) {
+    const session = open(5, { ...examples[half], holidays:[] });
+    assert.equal(session.getState().holiday.preset, names[0]);
+    act(session, 'holiday-skip');
+    assert.equal(session.getState().holiday.preset, names[1]);
+    act(session, 'holiday-skip');
+    assert.equal(session.getState().holiday.preset, names[2]);
+    for (let i=0;i<4;i++) act(session, 'holiday-skip');
+    assert.equal(session.getState().holiday.preset, names[2]);
+    assert.equal(session.getState().history.length, 0);
+    pick(session, examples[half].range.end);
+    act(session, 'holiday-save');
+    assert.equal(session.getState().holiday.preset, names[2]);
+    act(session, 'holiday-preset', {name:names[0]});
+    assert.equal(session.getState().holiday.preset, names[0]);
+  }
+});
+
+test('已有全部节日记录时跳过仍顺序前进并在末项停留', () => {
+  const config = { ...examples.autumn, holidays:['中秋节','国庆节','元旦'].map(name=>({name,dates:['2023-10-01']})) };
+  const session = open(5,config);
+  act(session,'holiday-skip');
+  assert.equal(session.getState().holiday.preset,'国庆节');
+  act(session,'holiday-skip'); act(session,'holiday-skip');
+  assert.equal(session.getState().holiday.preset,'元旦');
+  assert.deepEqual(session.getState().config.holidays,normalizeConfig(config).holidays);
 });
 
 test('合并节日编辑同一记录，自定义放假保存后准备下一条', () => {
