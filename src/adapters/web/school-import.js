@@ -52,7 +52,7 @@ export function mountSchoolImport(apply, currentConfig) {
       $('school-year').value = String(selected);
       $('school-year-field').hidden = false;
       const stamp = new Date(catalog.checkedAt).toLocaleString('zh-CN', { hour12: false });
-      $('school-import-status').textContent = `${result.message ? result.message + ' ' : ''}${source.mode === 'live' ? '最近同步' : '数据同步于'} ${stamp}${catalog.status === 'partial' ? '，部分来源未能更新。' : ''}`;
+      $('school-import-status').textContent = `${result.message ? result.message + ' ' : ''}${catalog.status === 'partial' ? '最近检查' : source.mode === 'live' ? '最近同步' : '数据同步于'} ${stamp}${catalog.status === 'partial' ? '，部分来源未能更新。' : ''}`;
       const index = catalog.calendars[selected].candidates.findIndex(item => item.config.half === config.half);
       showCandidate(Math.max(0, index));
     } catch (error) {
