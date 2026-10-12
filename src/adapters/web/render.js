@@ -122,7 +122,8 @@ export function createRenderer(calendarKeyboard) {
   }
   function updateDetail(calendar) {
     const d = calendar.days.find(day => day.date === selected);
-    $('day-detail').hidden = !d || mode === 'adjustment' || mode === 'range';
+    // 选日过程中保持表格高度稳定，日期属性在完成后的查看模式中展开。
+    $('day-detail').hidden = !d || mode !== 'inspect';
     if ($('day-detail').hidden) { $('day-detail').innerHTML = ''; return; }
     $('day-detail').innerHTML = `<strong>${formatDisplayDate(d.date)}</strong><span>${d.weekdayLabel}</span>${d.teachingLabel?`<span class="detail-tag">${d.teachingLabel}</span>`:''}${d.exams.map(x=>`<span class="detail-tag exam">${x}学期考试</span>`).join('')}${d.vacation?`<span class="detail-tag vacation">${d.vacation}</span>`:''}${!d.teachingLabel&&!d.vacation&&!d.exams.length?`<span>${d.term?d.term+'学期 · 无教学周编号':'尚未安排'}</span>`:''}`;
     if (d) $('day-detail').innerHTML += d.holidays.map(h=>`<span class="detail-tag holiday">${escape(h.name)}放假</span>`).join('') + adjustmentLinks(d.date).map(a=>`<span class="detail-tag schedule">${escape(a.description)}</span>`).join('');

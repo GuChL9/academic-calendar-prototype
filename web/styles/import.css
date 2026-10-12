@@ -6,7 +6,8 @@
 .return-calendar { display:block; margin:10px auto 0; }
 .calendar-scroll { margin-top:16px; margin-bottom:max(6px,calc(16px - var(--calendar-scrollbar,0px))); padding-bottom:0; }
 .calendar-area { --legend-width:102px; display:grid; grid-template-columns:minmax(0,1fr) var(--legend-width); align-items:center; border:1px solid var(--line); border-radius:var(--radius); background:var(--paper); box-shadow:var(--shadow); overflow:hidden; }
-.calendar-area .canvas { border:0; border-radius:0; background:transparent; box-shadow:none; padding-left:var(--calendar-inset,0px); }
+.calendar-area .canvas { border:0; border-radius:0; background:transparent; box-shadow:none; }
+.calendar-area .calendar-frame { padding-left:var(--calendar-inset,0px); }
 .calendar-footer { display:flex; justify-content:flex-end; padding:3px 0 0; }
 .calendar-footer:has(.school-notes[hidden]) { display:none; }
 .calendar-legend { flex-direction:column; justify-content:center; gap:12px; margin:0; padding:8px 12px; border-top:0; border-left:1px solid var(--line); }
@@ -69,7 +70,7 @@
 @media(max-width:900px) {
   .calendar-area { display:block; border:0; border-radius:0; background:transparent; box-shadow:none; overflow:visible; }
   .calendar-area .canvas { border:1px solid var(--line); border-radius:var(--radius); background:var(--paper); box-shadow:var(--shadow); }
-  .calendar-area .canvas { padding-left:0; }
+  .calendar-area .calendar-frame { padding-left:0; }
   .calendar-legend { flex-direction:row; flex-wrap:wrap; gap:6px 14px; padding:8px 4px 0; border-left:0; }
   .calendar-footer { justify-content:center; padding-top:0; }
   .school-notes>summary { margin-inline:auto; }
