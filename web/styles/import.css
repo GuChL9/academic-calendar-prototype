@@ -1,43 +1,20 @@
-/* 导入采用独立核对面板，主日历的布局与切换动画保持原有尺寸。 */
-.import-dialog {
-  width:min(720px,calc(100% - 32px));
-  max-height:calc(100dvh - 64px);
-  margin:auto;
-  padding:28px;
-  color:var(--ink);
-  background:var(--paper);
-  border:1px solid var(--line);
-  border-radius:var(--radius);
-  box-shadow:0 24px 80px #18202b26;
-  overscroll-behavior:contain;
-}
-.import-dialog::backdrop { background:#18202b42; backdrop-filter:blur(5px); }
-.import-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
-.import-heading h2 { margin:0; font-size:22px; font-family:var(--title-font); }
-.import-dialog h3 { font-size:14px; margin:24px 0 8px; }
-.import-file { margin:22px 0; }
-.import-file p { font-size:13px; color:var(--muted); overflow-wrap:anywhere; line-height:1.7; }
-.import-year { display:flex; align-items:center; gap:16px; margin-bottom:18px; }
-.import-year label { font-size:13px; color:var(--muted); }
-.import-year select { width:auto; min-width:180px; }
-#school-origin a { color:var(--navy); text-underline-offset:3px; }
-.import-candidates { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
-.import-summary { margin:0; }
-.import-summary>div { display:grid; grid-template-columns:110px 1fr; gap:16px; padding:13px 0; border-bottom:1px solid var(--line); }
-.import-summary dt { color:var(--muted); font-size:13px; }
-.import-summary dd { margin:0; line-height:1.7; font-variant-numeric:tabular-nums; }
-.import-summary small,.import-record small { display:block; color:var(--muted); font-size:12px; line-height:1.7; }
-.import-record { display:flex; align-items:flex-start; gap:12px; padding:8px 0; cursor:pointer; }
-.import-record input { flex:0 0 auto; width:16px; height:16px; margin:3px 0 0; accent-color:var(--navy); }
-.import-record strong { font-size:13px; font-weight:500; color:var(--ink); }
-.import-notices { background:var(--soft); border:1px solid var(--line); border-radius:12px; padding:16px; margin:22px 0; }
-.import-notices h3 { margin:0 0 10px; }
-.import-notices ul { padding-left:18px; margin:0; font-size:12px; line-height:1.8; color:var(--muted); }
-.import-notices li+li { margin-top:8px; }
-.import-source { white-space:pre-wrap; font-size:12px; color:var(--muted); line-height:1.9; }
-.import-footer { display:flex; justify-content:flex-end; padding-top:20px; }
-.import-dialog .hint { font-size:12px; line-height:1.7; }
-@media(max-width:600px) {
-  .import-dialog { padding:20px; max-height:calc(100dvh - 24px); }
-  .import-summary>div { grid-template-columns:1fr; gap:4px; }
+/* 新建入口与校历图示共用双主题参数，核对沿用原有步骤和过渡动画。 */
+.creation-actions { display:flex; justify-content:center; gap:12px; margin-top:20px; }
+.creation-actions button { min-width:158px; }
+.creation-status { max-width:520px; margin:14px auto 0; color:var(--muted); font-size:12px; line-height:1.7; text-align:center; }
+.creation-feedback { display:flex; justify-content:center; flex-wrap:wrap; gap:12px; margin-top:6px; }
+.return-calendar { display:block; margin:10px auto 0; }
+.calendar-legend { flex-direction:row; justify-content:center; flex-wrap:wrap; gap:8px 18px; margin:0; padding:12px 18px; border-top:0; }
+.school-notes { margin:0 22px 14px; padding-top:0; border-top:0; text-align:left; }
+.school-notes>summary { width:fit-content; margin:auto; font-size:12px; color:var(--muted); }
+.school-note-content { margin-top:12px; padding:14px 18px; border-radius:10px; background:var(--soft); max-height:260px; overflow:auto; font-size:12px; line-height:1.8; color:var(--muted); }
+.school-note-content p { margin:0 0 10px; }
+.school-note-content a { color:var(--navy); text-underline-offset:3px; }
+.school-note-content ul { padding-left:18px; }
+.school-note-content .import-source { white-space:pre-wrap; margin-bottom:0; }
+@media(max-width:520px) {
+  .creation-actions { gap:8px; }
+  .creation-actions button { flex:1; min-width:0; padding-inline:10px; }
+  .calendar-legend { gap:7px 12px; padding-inline:10px; }
+  .school-notes { margin-inline:14px; }
 }

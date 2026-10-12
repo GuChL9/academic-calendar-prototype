@@ -1,4 +1,5 @@
 import * as C from '../core/index.js';
+import { schoolReview } from './school-review.js';
 import { holidayPresets, matchesHoliday, nextUnsetHoliday } from './holidays.js';
 
 export const STEP_MODES = ['inspect', 'range', 'monday', 'first', 'second', 'holiday', 'adjustment'];
@@ -6,7 +7,7 @@ const clone = value => JSON.parse(JSON.stringify(value));
 export function modeOf(state) { return state.finished ? 'inspect' : STEP_MODES[state.step]; }
 export function stepNames(config) {
   const [first, second] = C.TERMS[config.half];
-  return ['学年与学期', '制表范围', '第一教学周', `${first}学期考试`, `${second}学期考试`, '放假日期', '课程对调与补课'];
+  return ['新建校历', '制表范围', '第一教学周', `${first}学期考试`, `${second}学期考试`, '放假日期', '课程对调与补课'];
 }
 function selectHoliday(state, name, index) {
   const found = index ?? (name ? state.config.holidays.findIndex(item => matchesHoliday(item, name)) : -1);
@@ -21,15 +22,19 @@ function resetHoliday(state) {
 function resetAdjustment(state, keepKind = false) {
   state.adjustment = { kind: keepKind ? state.adjustment.kind : 'swap', dates: [], editing: null };
 }
-function apply(state, input, message = null) {
-  const config = C.normalizeConfig(input);
-  state.history.push(clone(state.config));
-  if (state.history.length > 30) state.history.shift();
+function apply(state, input, message = null, source = state.schoolSource) {
+  const config = C.normalizeConfig(input), schoolSource = schoolReview(source, config);
+  // 核对时沿用原值不会生成空的撤销记录。来源与配置一起恢复。
+  if (JSON.stringify([config, schoolSource]) !== JSON.stringify([state.config, state.schoolSource])) {
+    state.history.push(clone({ config: state.config, schoolSource: state.schoolSource }));
+    if (state.history.length > 30) state.history.shift();
+    state.revision++;
+  }
+  state.schoolSource = schoolSource;
   state.config = config;
   state.yearInput = config.academicYear;
   state.halfInput = config.half;
   state.anchor = null;
-  state.revision++;
   state.message = message;
 }
 function toggle(dates, date) {
@@ -97,6 +102,8 @@ function navigate(state, direction) {
   const next = state.step + direction;
   if (next < 0 || next >= STEP_MODES.length) return;
   if (state.step === 1 && direction > 0 && state.anchor) throw new Error('请再选择制表末日，或清除本次选择');
+  if (state.step === 4 && direction > 0 && state.anchor) throw new Error('请再选择考试末日，或清除本次选择');
+  if (state.step === 5 && direction > 0 && holidayChanged(state)) throw new Error('请先保存放假日期，或取消编辑后继续');
   let pending = state.step === 1 && direction > 0 && state.rangeDraft ? { ...state.config, range: state.rangeDraft } : null;
   let newCalendar = false;
   if (state.step === 0 && direction > 0) {
@@ -104,13 +111,18 @@ function navigate(state, direction) {
     newCalendar = blank.academicYear !== state.config.academicYear || blank.half !== state.config.half;
     if (newCalendar) pending = blank;
   }
-  if (pending) apply(state, pending, newCalendar ? '已生成空白日历，可选择制表范围' : '制表范围已应用');
+  if (pending) apply(state, pending, newCalendar ? '已生成空白日历，可选择制表范围' : '制表范围已应用', newCalendar ? null : state.schoolSource);
+  state.entryReturn = next === 0 ? { step: state.step, finished: false } : null;
   // 范围在向前导航时提交；其他导航只保留已应用的配置。
   state.step = next;
   state.selected = null;
   state.anchor = null;
   state.rangeDraft = null;
   if (newCalendar) { resetHoliday(state); resetAdjustment(state); }
+}
+export function holidayChanged(state) {
+  const draft = state.holiday, record = state.config.holidays[draft.editing];
+  return record ? draft.name.trim() !== record.name || JSON.stringify(draft.dates) !== JSON.stringify(record.dates) : draft.dates.length > 0;
 }
 function finish(state) {
   if (state.adjustment.dates.some(Boolean) || state.adjustment.editing !== null) {
@@ -152,7 +164,20 @@ function reduce(state, action) {
     case 'select-date': selectDate(state, action.date); break;
     case 'previous': navigate(state, -1); break;
     case 'next': state.step === 6 ? finish(state) : navigate(state, 1); break;
-    case 'continue': state.finished = false; state.selected = null; break;
+    case 'continue': state.finished = false; state.step = 1; state.selected = null; state.entryReturn = null; break;
+    case 'new-calendar':
+      if (state.step !== 0 || state.finished) state.entryReturn = { step: state.step, finished: state.finished };
+      state.step = 0; state.finished = false; state.yearInput = state.config.academicYear; state.halfInput = state.config.half;
+      break;
+    case 'cancel-new':
+      if (state.entryReturn) { Object.assign(state, state.entryReturn); state.entryReturn = null; }
+      state.yearInput = state.config.academicYear; state.halfInput = state.config.half;
+      break;
+    case 'manual-start':
+      apply(state, C.blankConfig(Number(state.yearInput), state.halfInput), '已新建空白校历', null);
+      state.step = 1; state.finished = false; state.selected = null; state.rangeDraft = null; state.entryReturn = null;
+      resetHoliday(state); resetAdjustment(state);
+      break;
     case 'density': state.compact = !state.compact; break;
     case 'full-range': state.rangeDraft = { ...state.config.canvasRange }; state.anchor = null; break;
     case 'clear-selection': state.anchor = null; state.rangeDraft = null; break;
@@ -207,15 +232,17 @@ function reduce(state, action) {
       break;
     case 'school-import':
     case 'import':
-      apply(state, action.config, action.type === 'school-import' ? '已导入校历，可继续编辑或撤销' : '已打开配置');
+      apply(state, action.config, action.type === 'school-import' ? '已导入校历，可逐步核对' : '已打开配置', action.type === 'school-import' ? action.source ?? null : null);
       state.finished = false; state.selected = null; state.rangeDraft = null;
       state.anchor = null;
-      if (action.type === 'school-import') { state.step = 6; state.finished = true; }
+      state.entryReturn = null;
+      if (action.type === 'school-import') { state.step = 1; state.rangeDraft = { ...state.config.range }; }
+      else if (state.step === 0) state.step = 1;
       resetHoliday(state); resetAdjustment(state);
       break;
     case 'undo':
       if (state.history.length) {
-        state.config = state.history.pop(); state.revision++; state.anchor = null; state.rangeDraft = null; state.selected = null;
+        Object.assign(state, state.history.pop()); state.revision++; state.entryReturn = null; state.anchor = null; state.rangeDraft = null; state.selected = null;
         state.yearInput = state.config.academicYear; state.halfInput = state.config.half;
         resetHoliday(state); resetAdjustment(state); state.message = '已撤销上一次修改';
       }
@@ -228,6 +255,7 @@ function reduce(state, action) {
 export function createSession(input = C.blankConfig(), view = {}) {
   const config = C.normalizeConfig(input);
   let state = { config, step: Number.isInteger(view.currentStep) && view.currentStep >= 0 && view.currentStep <= 6 ? view.currentStep : 0,
+    schoolSource: schoolReview(view.schoolSource, config), entryReturn: null,
     compact: typeof view.compact === 'boolean' ? view.compact : true, finished: false,
     yearInput: config.academicYear, halfInput: config.half, selected: null, anchor: null, rangeDraft: null,
     holiday: null, adjustment: { kind: 'swap', dates: [], editing: null }, history: [], revision: 0, message: null };

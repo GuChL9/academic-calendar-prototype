@@ -83,7 +83,8 @@ test('节假日草稿只用于预览，保存后继续下一预设', () => {
   const preview = generateCalendar(previewConfig(session.getState()));
   assert.equal(preview.days.find(d => d.date === '2023-09-29').isHoliday, true);
   assert.equal(preview.days.find(d => d.date === '2023-09-30').isHoliday, false);
-  act(session, 'next'); act(session, 'previous');
+  assert.throws(() => act(session, 'next'), /先保存放假/);
+  act(session, 'previous'); act(session, 'next');
   assert.equal(session.getState().holiday.dates.length, 2);
   act(session, 'holiday-save');
   assert.equal(session.getState().config.holidays.length, 1);
@@ -136,7 +137,7 @@ test('冲突保存保留草稿，取消编辑保留记录', () => {
   act(session, 'adjustment-cancel'); act(session, 'next');
   assert.equal(session.getState().finished, true);
   assert.deepEqual(session.getState().config, normalizeConfig(config));
-  act(session, 'continue'); assert.equal(modeOf(session.getState()), 'adjustment');
+  act(session, 'continue'); assert.equal(modeOf(session.getState()), 'range');
 });
 
 test('导入完整替换，保持步骤并清除草稿，可撤销恢复', () => {
@@ -182,4 +183,50 @@ test('补课只引用原日安排且可以共享原课程日', () => {
   const days = generateCalendar(config).days;
   assert.equal(days.find(d => d.date === '2023-10-07').effectiveScheduleDate, '2023-10-05');
   assert.equal(days.find(d => d.date === '2023-10-08').effectiveScheduleDate, '2023-10-05');
+});
+
+
+test('新建入口不修改原校历，可返回未保存的草稿', () => {
+  const session = open(5);
+  pick(session, '2023-10-01');
+  const before = session.getState();
+  act(session, 'new-calendar'); act(session, 'year', { value: '2026' });
+  assert.deepEqual(session.getState().config, before.config);
+  const back = act(session, 'cancel-new');
+  assert.equal(back.step, 5); assert.deepEqual(back.holiday, before.holiday);
+  act(session, 'holiday-cancel'); act(session, 'next'); act(session, 'next');
+  act(session, 'new-calendar');
+  assert.equal(act(session, 'cancel-new').finished, true);
+});
+
+test('同一学期也能新建空表，撤销恢复旧安排', () => {
+  const session = open(0), original = session.getState().config;
+  const fresh = act(session, 'manual-start');
+  assert.equal(fresh.step, 1); assert.equal(fresh.config.academicYear, original.academicYear);
+  assert.equal(fresh.config.firstMonday, null); assert.deepEqual(fresh.config.firstExams, []);
+  assert.deepEqual(act(session, 'undo').config, original);
+});
+
+test('统一核对沿用导入值，未修改的步骤不占用撤销记录', () => {
+  const session = createSession(blankConfig(2023)), before = session.getState().config;
+  act(session, 'school-import', { config: examples.autumn });
+  for (let i = 0; i < 6; i++) act(session, 'next');
+  assert.equal(session.getState().finished, true);
+  assert.deepEqual(session.getState().config, normalizeConfig(examples.autumn));
+  assert.equal(session.getState().history.length, 1);
+  assert.deepEqual(act(session, 'undo').config, before);
+});
+
+test('考试只选首日时保留已保存区间并阻止继续', () => {
+  const session = open(4), before = session.getState().config;
+  pick(session, '2024-01-10');
+  assert.throws(() => act(session, 'next'), /考试末日/);
+  assert.deepEqual(session.getState().config, before);
+  act(session, 'clear-selection'); assert.equal(act(session, 'next').step, 5);
+});
+
+
+test('从新建入口打开配置直接进入编辑步骤', () => {
+  const session = createSession(blankConfig(2023));
+  assert.equal(act(session, 'import', { config: examples.autumn }).step, 1);
 });

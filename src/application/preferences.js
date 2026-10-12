@@ -1,3 +1,5 @@
+import { schoolReview } from './school-review.js';
+
 export function readState(storage, key, config, stepCount) {
   const state = { currentStep: 0, compact: true, finished: false };
   try {
@@ -5,6 +7,7 @@ export function readState(storage, key, config, stepCount) {
     if (!saved || saved.version !== 1) return state;
     if (typeof saved.compact === 'boolean') state.compact = saved.compact;
     if (saved.calendar !== JSON.stringify(config)) return state;
+    try { if (saved.schoolSource) state.schoolSource = schoolReview(saved.schoolSource, config); } catch { /* 来源损坏不妨碍恢复已保存的校历。 */ }
     if (Number.isInteger(saved.currentStep) && saved.currentStep >= 0 && saved.currentStep < stepCount) {
       state.currentStep = saved.currentStep;
       state.finished = saved.finished === true && state.currentStep === stepCount - 1;

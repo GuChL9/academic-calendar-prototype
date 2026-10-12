@@ -1,5 +1,5 @@
 import * as C from '../../core/index.js';
-import { modeOf, previewConfig } from '../../application/session.js';
+import { modeOf, previewConfig, holidayChanged } from '../../application/session.js';
 import { holidayPresets as presets, nextUnsetHoliday as nextHoliday, matchesHoliday } from '../../application/holidays.js';
 import { escape, formatDisplayDate, formatDisplayRange, shortDate } from './format.js';
 
@@ -15,13 +15,16 @@ export function createRenderer(calendarKeyboard) {
   function renderStep() {
     document.body.classList.toggle('calendar-finished', finished);
     const [first, second] = C.TERMS[config.half];
-    const names = ['学年与学期', '制表范围', '第一教学周', `${first}学期考试`, `${second}学期考试`, '放假日期', '课程对调与补课'];
+    const names = ['新建校历', '制表范围', '第一教学周', `${first}学期考试`, `${second}学期考试`, '放假日期', '课程对调与补课'];
     steps.forEach((step, index) => { step.hidden = index !== currentStep; });
+    document.querySelector('.step-navigation').hidden = currentStep === 0;
+    $('new-calendar').hidden = currentStep === 0 && !finished;
+    $('cancel-new').hidden = !snapshot.entryReturn;
     $('previous-step').disabled = currentStep === 0;
     $('next-step').textContent = currentStep < steps.length - 1 ? `下一步：${names[currentStep + 1]}` : '完成制表';
     $('settings').hidden = finished;
     $('continue-edit').hidden = !finished;
-    $('mode-banner').hidden = finished;
+    $('mode-banner').hidden = finished || currentStep === 0;
   }
   function updateMode() {
     const first = C.TERMS[config.half][0], second = C.TERMS[config.half][1];
@@ -46,7 +49,7 @@ export function createRenderer(calendarKeyboard) {
   }
   function updateRangeSummary() {
     $('selected-range').textContent = rangeDraft ? `待应用：${formatDisplayRange(rangeDraft)}` : `当前范围：${formatDisplayRange(config.range)}`;
-    $('range-legend').hidden = currentStep !== 1;
+    $('range-legend').hidden = mode !== 'range' || !rangeDraft;
   }
   function dateClasses(day) {
     return [day.isWeekend ? 'weekend' : '', day.vacation ? 'vacation' : '', day.isHoliday ? 'holiday' : '', day.exams.length ? 'exam' : '', currentStep !== 1 && selected === day.date ? 'selected' : '', anchor === day.date ? 'anchor' : '', rangeClasses(day)].filter(Boolean).join(' ');
@@ -158,7 +161,7 @@ export function createRenderer(calendarKeyboard) {
     $('holiday-shared').textContent = shared ? `沿用合并记录“${record.name}”，修改后对应节日会一起更新。` : '';
     $('save-holiday').textContent = holidayPreset && nextUnsetHoliday(holidayPreset) ? '保存并设置下一个节日' : editingHoliday === null ? '保存假期' : '保存修改';
     $('skip-holiday').hidden = !holidayPreset;
-    $('cancel-holiday').hidden = editingHoliday === null && Boolean(holidayPreset);
+    $('cancel-holiday').hidden = !holidayChanged(snapshot) && editingHoliday === null && Boolean(holidayPreset);
     updateHolidaySelection();
   }
   function updateAdjustmentLabels() {
@@ -170,6 +173,21 @@ export function createRenderer(calendarKeyboard) {
     $('clear-adjustment').hidden = !a && !b;
     $('adjustment-hint').textContent = makeup ? '补课只调整实际补课日，原日期不变。' : '';
     $('adjustment-hint').hidden = !$('adjustment-hint').textContent;
+  }
+  let sourceKey = '';
+  function renderSchoolSource(source) {
+    const key = JSON.stringify(source);
+    if (key === sourceKey) return;
+    sourceKey = key;
+    $('school-source-details').hidden = !source;
+    $('school-source-details').open = false;
+    if (!source) return;
+    $('school-source-label').textContent = '学校说明' + (source.warnings.length ? ` · ${source.warnings.length} 项待核对` : '');
+    const stamp = new Date(source.checkedAt).toLocaleString('zh-CN', { hour12: false });
+    $('school-origin').innerHTML = `<a href="${escape(source.noticeUrl)}" target="_blank" rel="noopener noreferrer">发布通知</a> · <a href="${escape(source.attachmentUrl)}" target="_blank" rel="noopener noreferrer">原始 Excel</a> · 学校发布于 ${escape(source.publishedAt)}<br>${source.stale ? '使用已保存校历；最近检查' : '数据同步于'} ${escape(stamp)}`;
+    $('school-notice-list').innerHTML = source.warnings.map(line => `<li>${escape(line)}</li>`).join('');
+    $('school-notice-list').hidden = !source.warnings.length;
+    $('school-source').textContent = source.notes.join('\n');
   }
   return function render(state) {
     snapshot = state;
@@ -192,6 +210,7 @@ export function createRenderer(calendarKeyboard) {
     ).join('');
     $('teaching-summary').textContent = config.firstMonday ? '第一教学周周一：' + formatDisplayDate(config.firstMonday) : '尚未设置第一教学周';
     $('undo').disabled = !history.length;
+    renderSchoolSource(state.schoolSource);
     updateRangeSummary(); renderCalendar(); updateMode(); renderStep(); renderArrangements();
   };
 }

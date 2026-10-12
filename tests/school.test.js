@@ -8,6 +8,7 @@ import { readSchoolListing, schoolUrl, SCHOOL_LIST } from '../src/sources/zju.js
 import { normalizeCatalog } from '../src/sources/catalog.js';
 import { blankConfig, exportData, generateCalendar } from '../src/core/index.js';
 import { createSession } from '../src/application/session.js';
+import { createStorage } from '../src/adapters/web/storage.js';
 import { createXlsx } from '../src/export/xlsx.js';
 
 const file = year => fs.readFileSync(new URL(`./fixtures/zju-${year}.xlsx`, import.meta.url));
@@ -68,7 +69,7 @@ test('破损日期、非 8+8 周、重复版本都不会静默导入', () => {
 test('导入是一次可撤销操作，失败保持原配置', () => {
   const old = blankConfig(2023), session = createSession(old), config = parsed(2026).candidates[0].config;
   const state = session.dispatch({ type: 'school-import', config });
-  assert.equal(state.step, 6); assert.equal(state.finished, true); assert.deepEqual(state.config, config);
+  assert.equal(state.step, 1); assert.equal(state.finished, false); assert.deepEqual(state.rangeDraft, config.range); assert.deepEqual(state.config, config);
   const before = session.getState();
   assert.throws(() => session.dispatch({ type: 'school-import', config: { ...config, firstMonday: '2026-09-15' } }));
   assert.deepEqual(session.getState(), before);
@@ -124,4 +125,27 @@ test('来源只允许学校域名，外站普通通知不会触发抓取', async
   assert.equal(calls, 1);
   const malformed = structuredClone(seed); malformed.calendars[0].noticeUrl = 'javascript:alert(1)';
   assert.throws(() => normalizeCatalog(malformed));
+});
+
+
+test('学校原文与来源随修改保留，刷新和撤销恢复对应来源', () => {
+  const record = sources[0], candidate = record.candidates[0], config = candidate.config;
+  const source = { academicYear: config.academicYear, half: config.half, noticeUrl: record.noticeUrl,
+    attachmentUrl: record.attachmentUrl, publishedAt: record.publishedAt, checkedAt: seed.checkedAt,
+    stale: true, notes: candidate.notes, warnings: candidate.warnings };
+  const session = createSession(blankConfig(2023));
+  session.dispatch({ type: 'school-import', config, source });
+  session.dispatch({ type: 'next' }); session.dispatch({ type: 'next' });
+  session.dispatch({ type: 'select-date', date: config.firstExams[0] });
+  const state = session.getState(); assert.deepEqual(state.schoolSource, source);
+  const entries = new Map(), storage = createStorage({ getItem: key => entries.get(key), setItem: (key, value) => entries.set(key, value) });
+  storage.saveConfig(state.config); storage.saveView(state);
+  const restored = storage.load(blankConfig());
+  assert.deepEqual(createSession(restored.config, restored.view).getState().schoolSource, source);
+  session.dispatch({ type: 'new-calendar' }); session.dispatch({ type: 'manual-start' });
+  assert.equal(session.getState().schoolSource, null);
+  assert.deepEqual(session.dispatch({ type: 'undo' }).schoolSource, source);
+  const before = session.getState();
+  assert.throws(() => session.dispatch({ type: 'school-import', config, source: { ...source, noticeUrl: 'javascript:alert(1)' } }));
+  assert.deepEqual(session.getState(), before);
 });

@@ -20,7 +20,7 @@ export function createStorage(storage) {
       catch { return false; }
     },
     saveView(state) {
-      return saveState(storage, VIEW_KEY, state.config, { currentStep: state.step, compact: state.compact, finished: state.finished });
+      return saveState(storage, VIEW_KEY, state.config, { currentStep: state.entryReturn?.step ?? state.step, compact: state.compact, finished: state.entryReturn?.finished ?? state.finished, schoolSource: state.schoolSource });
     }
   };
 }

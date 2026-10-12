@@ -20,7 +20,7 @@ const restored = repository.load(C.blankConfig(year, half));
 const session = createSession(restored.config, restored.view);
 const keyboard = attachCalendar($('calendar-container'));
 const render = createRenderer(keyboard);
-let timer, viewFailed = false;
+let timer, viewFailed = false, schoolImport;
 function toast(message, error = false) {
   clearTimeout(timer);
   $('toast').textContent = message; $('toast').classList.toggle('error', error); $('toast').hidden = false;
@@ -47,6 +47,7 @@ function dispatch(action, navigation = false) {
     const before = session.getState();
     const state = session.dispatch(action);
     render(state);
+    schoolImport?.update(state);
     const saved = remember(state, state.revision !== before.revision);
     if (state.message && saved) toast(state.message);
     if (action.type === 'select-date') keyboard.focusDate(action.date);
@@ -56,8 +57,9 @@ function dispatch(action, navigation = false) {
       title.focus({ preventScroll: true });
       if (state.finished) motion.position($('calendar-title'));
       else if (modeOf(state) !== 'inspect') motion.position($('mode-banner'));
+      else motion.position($('settings'));
     }
-    if (['holiday-preset', 'holiday-custom', 'holiday-skip', 'holiday-save', 'holiday-edit', 'holiday-cancel', 'import', 'undo'].includes(action.type)) $('holiday-dates').open = false;
+    if (['holiday-preset', 'holiday-custom', 'holiday-skip', 'holiday-save', 'holiday-edit', 'holiday-cancel', 'import', 'school-import', 'manual-start', 'undo'].includes(action.type)) $('holiday-dates').open = false;
     if (action.type === 'holiday-custom') $('holiday-name').focus();
     if (action.type === 'holiday-edit') $('save-holiday').focus();
     if (action.type === 'adjustment-edit') $('adjustment-kind').querySelector('[aria-pressed="true"]').focus();
@@ -71,6 +73,9 @@ function click(id, type, navigation = false) {
 click('previous-step', 'previous', true);
 click('next-step', 'next', true);
 click('continue-edit', 'continue', true);
+click('new-calendar', 'new-calendar', true);
+click('cancel-new', 'cancel-new', true);
+click('manual-start', 'manual-start', true);
 click('exit-mode', 'clear-selection');
 click('full-range', 'full-range');
 click('clear-second', 'clear-second');
@@ -105,6 +110,7 @@ document.addEventListener('click', event => { if (!$('more-tools').contains(even
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return;
   if ($('more-tools').open) { $('more-tools').open = false; $('more-tools').querySelector('summary').focus(); }
+  else if (schoolImport && session.getState().step === 0) { schoolImport.cancel(); dispatch({ type: 'cancel-new' }, true); }
   else dispatch({ type: 'escape' });
 });
 $('save-config').onclick = () => {
@@ -133,4 +139,4 @@ $('file-input').onchange = async event => {
 };
 if (restored.restored) toast('已恢复上次保存在此设备的设置');
 else if (!restored.readable) toast('无法读取本地设置，请打开已保存的配置。', true);
-mountSchoolImport(config => dispatch({ type: 'school-import', config }), () => session.getState().config);
+schoolImport = mountSchoolImport((config, source) => dispatch({ type: 'school-import', config, source }, true), () => session.getState());

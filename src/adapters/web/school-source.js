@@ -15,7 +15,7 @@ export function createSchoolSource() {
       return { catalog: cached, message: '' };
     } catch (error) {
       if (signal.aborted) throw error;
-      return { catalog: cached, message: '本次更新失败，显示已保存的校历，可稍后重试。' };
+      return { catalog: cached, fallback: true, message: '本次更新失败，显示已保存的校历，可稍后重试。' };
     }
   } };
 }
