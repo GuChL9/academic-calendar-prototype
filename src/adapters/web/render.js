@@ -43,7 +43,7 @@ export function createRenderer(calendarKeyboard) {
       monday: '点击第一教学周的周一，自动生成 8 + 8 周。',
       first: `逐日点选${first}学期考试日，再点取消。`,
       second: anchor ? `已选 ${formatDisplayDate(anchor)}，再点另一个端点。` : `点击${second}学期考试首尾两日，自动保存。`,
-      holiday: editingHoliday !== null && !holidaySelection.length ? '可重新点选日期，或删除此项放假。' : '点选放假日期，再点取消；选好后保存。',
+      holiday: editingHoliday !== null && !holidaySelection.length ? '可重新点选日期，或清除已保存日期。' : '点选放假日期，再点取消；选好后保存。',
       adjustment: adjustmentSelection.filter(Boolean).length === 2 ? '点击已选日期可重选，选好后保存。' : adjustmentSelection.some(Boolean) ? `请再点击${adjustmentKind === 'makeup' ? (adjustmentSelection[0] ? '原课程日' : '实际补课日') : '要对调的另一日期'}。` : adjustmentKind === 'makeup' ? '先点实际补课日，再点原课程日。' : '依次点击要对调的两个日期。'
     };
     $('mode-message').textContent = ['first','second'].includes(mode) && !config.firstMonday ? '请先返回“第一教学周”步骤，点击一个周一，再选择考试日期。' : messages[mode];
@@ -161,7 +161,7 @@ export function createRenderer(calendarKeyboard) {
     $('holiday-selection').textContent = `已选 ${holidaySelection.length} 天`;
     $('holiday-dates').hidden = !holidaySelection.length;
     $('holiday-empty').hidden = Boolean(holidaySelection.length);
-    $('holiday-empty').textContent = editingHoliday !== null ? '已选 0 天，删除后可撤销。' : '已选 0 天';
+    $('holiday-empty').textContent = editingHoliday !== null ? '已选 0 天，清除后可撤销。' : '已选 0 天';
     if (!holidaySelection.length) $('holiday-dates').open = false;
     $('holiday-date-list').innerHTML = holidaySelection.map(date=>`<button type="button" class="exam-chip holiday-chip" data-remove-holiday-date="${date}" aria-label="移除放假日期 ${formatDisplayDate(date)}">${formatDisplayDate(date)} ×</button>`).join('');
   }
@@ -179,9 +179,9 @@ export function createRenderer(calendarKeyboard) {
     $('holiday-shared').textContent = shared ? `沿用合并记录“${record.name}”，修改后对应节日会一起更新。` : '';
     const deleting = editingHoliday !== null && !holidaySelection.length;
     const continuing = holidaySelection.length && holidayPreset && nextUnsetHoliday(holidayPreset);
-    $('save-holiday').textContent = deleting ? '删除假期' : editingHoliday === null ? '保存假期' : '保存修改';
+    $('save-holiday').textContent = deleting ? '清除日期' : editingHoliday === null ? '保存假期' : '保存修改';
     $('save-holiday').classList.toggle('danger-button', deleting);
-    setAvailability($('save-holiday'), actionIssue(snapshot, 'holiday-save'), deleting ? '删除此项放假' : continuing ? '保存并设置下一个节日' : $('save-holiday').textContent);
+    setAvailability($('save-holiday'), actionIssue(snapshot, 'holiday-save'), deleting ? '清除这项已保存的放假日期' : continuing ? '保存并设置下一个节日' : $('save-holiday').textContent);
     const changed = holidayChanged(snapshot);
     // 未设置可跳过，已保存可继续；修改中的取消操作共用同一位置。
     $('skip-holiday').textContent = record ? '下个节日' : '暂时跳过';

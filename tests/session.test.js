@@ -31,7 +31,7 @@ test('放假提交可用性覆盖空日期、空名称、修改、删除和撤�
   pick(session, '2023-10-01');
   const deleted = verifyAction(session, 'holiday-save', true);
   assert.deepEqual(deleted.config.holidays, []);
-  assert.match(deleted.message, /已删除/);
+  assert.match(deleted.message, /已清除此项放假日期/);
   assert.equal(act(session, 'undo').config.holidays[0].name, '校庆');
 });
 

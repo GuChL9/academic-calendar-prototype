@@ -140,7 +140,7 @@ export function holidayChanged(state) {
 function forwardDraftIssue(state, index) {
   const returningToAdjustment = index === 6 && (state.adjustment.dates.some(Boolean) || state.adjustment.editing !== null);
   if (index > 5 && holidayChanged(state) && !returningToAdjustment) return state.holiday.editing !== null && !state.holiday.dates.length
-    ? '请先删除此项放假，或取消编辑后继续' : '请先保存放假日期，或取消编辑后继续';
+    ? '请先清除原放假日期，或取消编辑后继续' : '请先保存放假日期，或取消编辑后继续';
   return null;
 }
 /** 步骤条和会话共用可达性规则；后退保留草稿，前进可返回草稿所在步骤。 */
@@ -167,7 +167,7 @@ function goToStep(state, index) {
 function checkFinish(state) {
   // 范围草稿和考试锚点已由进入本步的导航提交或清除；跨步骤保留的草稿在此统一检查。
   if (holidayChanged(state)) throw new Error(state.holiday.editing !== null && !state.holiday.dates.length
-    ? '请先返回放假日期删除此项，或取消编辑后完成制表' : '请先返回放假日期保存，或取消编辑后完成制表');
+    ? '请先返回放假日期清除原日期，或取消编辑后完成制表' : '请先返回放假日期保存，或取消编辑后完成制表');
   if (state.adjustment.dates.some(Boolean) || state.adjustment.editing !== null) {
     throw new Error('请先保存调课，或清除选择、取消编辑后完成制表。');
   }
@@ -190,7 +190,7 @@ function holidayConfig(state) {
 }
 function saveHoliday(state) {
   const draft = state.holiday;
-  apply(state, holidayConfig(state), draft.dates.length ? '放假安排已保存' : '已删除此项放假，可撤销恢复');
+  apply(state, holidayConfig(state), draft.dates.length ? '放假安排已保存' : '已清除此项放假日期，可撤销恢复');
   if (draft.preset) selectHoliday(state, nextUnsetHoliday(state.config, draft.preset) || draft.preset);
   else selectHoliday(state, null);
 }
@@ -292,7 +292,7 @@ function reduce(state, action) {
     case 'escape':
       if (modeOf(state) === 'holiday' && holidayChanged(state)) {
         state.message = state.holiday.editing !== null && !state.holiday.dates.length
-          ? '放假修改草稿已保留；可删除此项放假或点击“取消编辑”。'
+          ? '放假修改草稿已保留；可清除已保存的放假日期或点击“取消编辑”。'
           : '放假日期尚未保存，草稿已保留；可保存或点击“取消编辑”。';
         break;
       }
