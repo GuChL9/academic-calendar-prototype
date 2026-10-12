@@ -230,3 +230,71 @@ test('从新建入口打开配置直接进入编辑步骤', () => {
   const session = createSession(blankConfig(2023));
   assert.equal(act(session, 'import', { config: examples.autumn }).step, 1);
 });
+
+test('跨步骤直达只改变视图，不提交配置或标记完成', () => {
+  const session = open(1), before = session.getState();
+  for (const index of [6, 3, 2, 5, 4, 1]) {
+    const state = act(session, 'go-to-step', { index });
+    assert.equal(state.step, index); assert.equal(state.finished, false);
+    assert.deepEqual(state.config, before.config); assert.equal(state.history.length, 0);
+  }
+  act(session, 'go-to-step', { index: 0 }); act(session, 'year', { value: 2026 });
+  assert.deepEqual(session.getState().config, before.config);
+  assert.equal(act(session, 'cancel-new').step, 1);
+  assert.throws(() => act(session, 'go-to-step', { index: 7 }), /有效的步骤/);
+  const fresh = createSession(blankConfig(2023));
+  assert.throws(() => act(fresh, 'go-to-step', { index: 6 }), /先选择/);
+});
+
+test('直达取消单个端点并提示，新的完整范围需先处理', () => {
+  for (const [step, date] of [[1, '2023-08-01'], [4, '2024-01-10']]) {
+    const session = open(step), before = session.getState().config;
+    pick(session, date);
+    const state = act(session, 'go-to-step', { index: 3 });
+    assert.equal(state.anchor, null); assert.match(state.message, /已取消未完成/);
+    assert.deepEqual(state.config, before);
+  }
+  const session = open(1);
+  pick(session, '2023-08-01'); pick(session, '2024-01-28');
+  const before = session.getState();
+  assert.throws(() => act(session, 'go-to-step', { index: 5 }), /下一步应用制表范围/);
+  assert.deepEqual(session.getState(), before);
+  act(session, 'next');
+  assert.equal(act(session, 'go-to-step', { index: 5 }).config.range.start, '2023-08-01');
+});
+
+test('未保存假期和调课阻止直达，允许返回草稿所在步骤', () => {
+  for (const [step, date, cancel, guard] of [[5, '2023-10-01', 'holiday-cancel', /放假日期保存/], [6, '2023-10-07', 'adjustment-cancel', /调课保存/]]) {
+    const session = open(step);
+    pick(session, date);
+    const before = session.getState();
+    assert.throws(() => act(session, 'go-to-step', { index: 2 }), guard);
+    assert.deepEqual(session.getState(), before);
+    act(session, 'previous');
+    assert.equal(act(session, 'go-to-step', { index: step }).step, step);
+    act(session, cancel);
+    assert.equal(act(session, 'go-to-step', { index: 2 }).step, 2);
+  }
+});
+
+test('导入范围可直接跳转，来源与撤销历史保留', () => {
+  const session = createSession(blankConfig(2023));
+  act(session, 'school-import', { config: examples.autumn });
+  const before = session.getState();
+  const state = act(session, 'go-to-step', { index: 5 });
+  assert.equal(state.step, 5); assert.equal(state.rangeDraft, null);
+  assert.deepEqual(state.config, before.config); assert.deepEqual(state.schoolSource, before.schoolSource);
+  assert.deepEqual(state.history, before.history);
+});
+
+test('多处草稿均可返回处理，隐藏的假期草稿阻止完成', () => {
+  const session = open(6);
+  pick(session, '2023-10-07'); act(session, 'previous'); pick(session, '2023-10-01');
+  act(session, 'go-to-step', { index: 6 });
+  assert.equal(session.getState().adjustment.dates[0], '2023-10-07');
+  act(session, 'adjustment-cancel');
+  assert.throws(() => act(session, 'next'), /放假日期保存/);
+  act(session, 'go-to-step', { index: 5 }); act(session, 'holiday-cancel');
+  act(session, 'go-to-step', { index: 6 });
+  assert.equal(act(session, 'next').finished, true);
+});

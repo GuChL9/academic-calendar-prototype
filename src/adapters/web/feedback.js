@@ -39,6 +39,9 @@ export function mountFeedback() {
   }
   function refreshEdges() {
     if (!leftEdge || !rightEdge) return;
+    // 实体滚动条占用的高度计入下沿留白，覆盖式滚动条的高度为零。
+    const scrollbar = Math.max(0, calendar.offsetHeight - calendar.clientHeight) + 'px';
+    if (calendar.style.getPropertyValue('--calendar-scrollbar') !== scrollbar) calendar.style.setProperty('--calendar-scrollbar', scrollbar);
     const viewport = calendar.getBoundingClientRect();
     const bounds = frame.getBoundingClientRect();
     const originX = bounds.left + frame.clientLeft;

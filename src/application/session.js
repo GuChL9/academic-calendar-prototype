@@ -124,7 +124,25 @@ export function holidayChanged(state) {
   const draft = state.holiday, record = state.config.holidays[draft.editing];
   return record ? draft.name.trim() !== record.name || JSON.stringify(draft.dates) !== JSON.stringify(record.dates) : draft.dates.length > 0;
 }
+/** 直达步骤仅切换视图；需要保存的草稿在原步骤处理，单端点可安全取消。 */
+function goToStep(state, index) {
+  if (!Number.isInteger(index) || index < 0 || index >= STEP_MODES.length) throw new Error('请选择有效的步骤');
+  if (index === state.step) return;
+  if (state.step === 0) throw new Error('请先选择导入校历或自行制表');
+  const pendingHoliday = holidayChanged(state), pendingAdjustment = state.adjustment.dates.some(Boolean) || state.adjustment.editing !== null;
+  const returningToDraft = (index === 5 && pendingHoliday) || (index === 6 && pendingAdjustment);
+  if (pendingHoliday && !returningToDraft) throw new Error('请先返回放假日期保存，或取消编辑后跳转');
+  if (pendingAdjustment && !returningToDraft) throw new Error('请先返回调课保存，或清除选择、取消编辑后跳转');
+  if (state.rangeDraft && (state.rangeDraft.start !== state.config.range.start || state.rangeDraft.end !== state.config.range.end)) {
+    throw new Error('请点击下一步应用制表范围，或清除本次选择后跳转');
+  }
+  if (state.anchor) state.message = '已取消未完成的日期选择，已保存安排保持不变';
+  state.entryReturn = index === 0 ? { step: state.step, finished: state.finished } : null;
+  state.step = index; state.finished = false; state.selected = null; state.anchor = null; state.rangeDraft = null;
+  state.yearInput = state.config.academicYear; state.halfInput = state.config.half;
+}
 function finish(state) {
+  if (holidayChanged(state)) throw new Error('请先返回放假日期保存，或取消编辑后完成制表');
   if (state.adjustment.dates.some(Boolean) || state.adjustment.editing !== null) {
     throw new Error('请先保存调课，或清除选择、取消编辑后完成制表。');
   }
@@ -164,6 +182,7 @@ function reduce(state, action) {
     case 'select-date': selectDate(state, action.date); break;
     case 'previous': navigate(state, -1); break;
     case 'next': state.step === 6 ? finish(state) : navigate(state, 1); break;
+    case 'go-to-step': goToStep(state, action.index); break;
     case 'continue': state.finished = false; state.step = 1; state.selected = null; state.entryReturn = null; break;
     case 'new-calendar':
       if (state.step !== 0 || state.finished) state.entryReturn = { step: state.step, finished: state.finished };

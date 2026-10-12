@@ -8,6 +8,7 @@ import { mountMotion } from './motion.js';
 import { mountFeedback } from './feedback.js';
 import { filename, download, readConfiguration } from './files.js';
 import { mountSchoolImport } from './school-import.js';
+import { mountStepNavigation } from './step-navigation.js';
 
 const $ = id => document.getElementById(id);
 const now = new Date();
@@ -20,7 +21,7 @@ const restored = repository.load(C.blankConfig(year, half));
 const session = createSession(restored.config, restored.view);
 const keyboard = attachCalendar($('calendar-container'));
 const render = createRenderer(keyboard);
-let timer, viewFailed = false, schoolImport;
+let timer, viewFailed = false, schoolImport, stepNavigation;
 function toast(message, error = false) {
   clearTimeout(timer);
   $('toast').textContent = message; $('toast').classList.toggle('error', error); $('toast').hidden = false;
@@ -48,6 +49,7 @@ function dispatch(action, navigation = false) {
     const state = session.dispatch(action);
     render(state);
     schoolImport?.update(state);
+    stepNavigation?.update(state);
     const saved = remember(state, state.revision !== before.revision);
     if (state.message && saved) toast(state.message);
     if (action.type === 'select-date') keyboard.focusDate(action.date);
@@ -140,3 +142,4 @@ $('file-input').onchange = async event => {
 if (restored.restored) toast('已恢复上次保存在此设备的设置');
 else if (!restored.readable) toast('无法读取本地设置，请打开已保存的配置。', true);
 schoolImport = mountSchoolImport((config, source) => dispatch({ type: 'school-import', config, source }, true), () => session.getState());
+stepNavigation = mountStepNavigation(index => dispatch({ type: 'go-to-step', index }, true), () => session.getState());

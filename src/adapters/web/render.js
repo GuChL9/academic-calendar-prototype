@@ -17,6 +17,7 @@ export function createRenderer(calendarKeyboard) {
     const [first, second] = C.TERMS[config.half];
     const names = ['新建校历', '制表范围', '第一教学周', `${first}学期考试`, `${second}学期考试`, '放假日期', '课程对调与补课'];
     steps.forEach((step, index) => { step.hidden = index !== currentStep; });
+    steps[currentStep].querySelector('h2').after($('mode-banner'));
     document.querySelector('.step-navigation').hidden = currentStep === 0;
     $('new-calendar').hidden = currentStep === 0 && !finished;
     $('cancel-new').hidden = !snapshot.entryReturn;
@@ -91,7 +92,7 @@ export function createRenderer(calendarKeyboard) {
       : `<th class="month-gap" colspan="${g.span}"></th>`).join('');
     html += '</tr><tr><th class="weekday" scope="row">教学周</th>' + calendar.weeks.map((w,i) => {
       const b=C.monthHeaderBorders(calendar,i);
-      return `<th scope="col" class="${b.left?'month-start':''} ${b.right?'month-end':''}"><span class="week-label">${w.label}</span></th>`;
+      return `<th scope="col" class="${b.left?'month-start':''} ${b.right?'month-end':''}"><span class="week-label">${w.label === '—' ? '' : w.label}</span></th>`;
     }).join('') + '</tr></thead><tbody>';
     for (let r = 0; r < 7; r++) {
       html += `<tr><th class="weekday" scope="row">${C.WEEKDAYS[r]}</th>`;
@@ -184,10 +185,14 @@ export function createRenderer(calendarKeyboard) {
     if (!source) return;
     $('school-source-label').textContent = '学校说明' + (source.warnings.length ? ` · ${source.warnings.length} 项待核对` : '');
     const stamp = new Date(source.checkedAt).toLocaleString('zh-CN', { hour12: false });
-    $('school-origin').innerHTML = `<a href="${escape(source.noticeUrl)}" target="_blank" rel="noopener noreferrer">发布通知</a> · <a href="${escape(source.attachmentUrl)}" target="_blank" rel="noopener noreferrer">原始 Excel</a> · 学校发布于 ${escape(source.publishedAt)}<br>${source.stale ? '使用已保存校历；最近检查' : '数据同步于'} ${escape(stamp)}`;
+    $('school-origin').innerHTML = `<div class="school-source-links"><a href="${escape(source.noticeUrl)}" target="_blank" rel="noopener noreferrer">发布通知 ↗</a><a href="${escape(source.attachmentUrl)}" target="_blank" rel="noopener noreferrer">原始 Excel ↗</a></div><div class="school-source-meta"><span>学校发布 · ${escape(source.publishedAt)}</span><span>${source.stale ? '已保存校历 · 最近检查' : '数据同步'} · ${escape(stamp)}</span></div>`;
     $('school-notice-list').innerHTML = source.warnings.map(line => `<li>${escape(line)}</li>`).join('');
     $('school-notice-list').hidden = !source.warnings.length;
-    $('school-source').textContent = source.notes.join('\n');
+    $('school-warning-section').hidden = !source.warnings.length;
+    $('school-source').innerHTML = source.notes.map(line => {
+      const match = line.match(/^([\d年月日\s、，,／/—–\-至]+)(.*)$/u);
+      return match ? `<div class="school-note-row"><span class="school-note-date">${escape(match[1].trim().replace(/日(?=\d)/g, '日、'))}</span><span>${escape(match[2])}</span></div>` : `<div class="school-note-row school-note-full">${escape(line)}</div>`;
+    }).join('');
   }
   return function render(state) {
     snapshot = state;

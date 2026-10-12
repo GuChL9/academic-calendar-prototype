@@ -14,8 +14,8 @@
   <main class="workspace">
     <section class="preview" aria-label="校历预览">
       <div class="preview-heading"><div><h2 id="calendar-title" tabindex="-1"></h2><p id="calendar-subtitle"></p></div><div class="preview-actions"><button id="new-calendar">新建校历</button><button id="continue-edit" hidden>继续编辑</button><button id="undo" disabled title="撤销上一次修改">↶ 撤销</button><details id="more-tools" class="more-tools"><summary>更多</summary><div class="tools-popover"><button id="fit-view" class="text-button">紧凑显示</button><button id="export-json" class="text-button">导出日历数据</button></div></details></div></div>
+      <div class="calendar-area">
       <div class="canvas">
-        <div class="mode-banner" id="mode-banner"><span id="mode-message">点击日期查看详情。</span><button id="exit-mode" class="text-button" hidden>清除本次选择</button></div>
         <div class="calendar-frame">
           <div id="calendar-container" class="calendar-scroll" tabindex="0" aria-label="日历，可横向滚动"></div>
           <span class="calendar-edge calendar-edge-left" aria-hidden="true" hidden></span>
@@ -23,12 +23,17 @@
         </div>
         <div id="adjustment-preview" class="adjustment-preview" aria-live="polite" hidden></div>
         <div id="day-detail" class="day-detail" hidden></div>
-        <div class="legend calendar-legend" aria-label="图例"><span><i class="legend-exam"></i>考 · 考试</span><span><i class="legend-vacation"></i>寒暑假</span><span><i class="legend-holiday"></i>休 · 放假</span><span>调 · 对调　补 · 补课</span><span id="range-legend" hidden><i class="legend-range"></i>待应用范围</span></div>
-        <details id="school-source-details" class="foldout school-notes" hidden><summary id="school-source-label">学校说明</summary><div class="school-note-content"><p id="school-origin"></p><ul id="school-notice-list"></ul><p id="school-source" class="import-source"></p></div></details>
+      </div>
+        <div class="legend calendar-legend" aria-label="图例"><span><i class="legend-exam"></i>考 · 考试</span><span><i class="legend-vacation"></i>寒暑假</span><span><i class="legend-holiday"></i>休 · 放假</span><span>调 · 对调</span><span>补 · 补课</span><span id="range-legend" hidden><i class="legend-range"></i>已选范围</span></div>
+      </div>
+      <div class="calendar-footer">
+        <details id="school-source-details" class="foldout school-notes" hidden><summary id="school-source-label">学校说明</summary><div class="school-note-content"><div id="school-origin"></div><section id="school-warning-section"><h3>待核对</h3><ul id="school-notice-list"></ul></section><h3>日程原文</h3><div id="school-source" class="import-source"></div></div></details>
       </div>
     </section>
     <section id="settings" class="settings" aria-label="校历设置">
-      <section class="step" aria-labelledby="step-year-title"><h2 id="step-year-title" tabindex="-1"><span>1 / 7</span> 新建校历</h2>
+      <nav id="step-track" class="step-track" aria-label="设置步骤"></nav>
+      <div class="mode-banner" id="mode-banner" hidden><span id="mode-message"></span><button id="exit-mode" class="text-button" hidden>清除本次选择</button></div>
+      <section class="step" aria-labelledby="step-year-title"><h2 id="step-year-title" tabindex="-1">新建校历</h2>
         <div class="step-fields">
           <div><label for="year">学年</label><div class="year-field"><input id="year" type="number" min="1900" max="2198" value="2026"><span id="year-suffix">— 2027 学年</span></div></div>
           <div><label for="half">学期</label><select id="half"><option value="autumn">秋冬学期</option><option value="spring">春夏学期</option></select></div>
@@ -38,22 +43,22 @@
         <div id="school-import-feedback" class="creation-feedback" hidden><button id="use-saved-school" class="text-button" hidden>使用已保存校历</button></div>
         <button id="cancel-new" class="text-button return-calendar" hidden>返回当前校历</button>
       </section>
-      <section class="step" aria-labelledby="step-range-title" hidden><h2 id="step-range-title" tabindex="-1"><span>2 / 7</span> 制表范围</h2>
+      <section class="step" aria-labelledby="step-range-title" hidden><h2 id="step-range-title" tabindex="-1">制表范围</h2>
         <p class="calculated" id="selected-range"></p>
         <div class="step-actions"><button class="text-button" id="full-range">选择全部空白日期</button></div>
       </section>
-      <section class="step" aria-labelledby="step-monday-title" hidden><h2 id="step-monday-title" tabindex="-1"><span>3 / 7</span> 第一教学周</h2>
+      <section class="step" aria-labelledby="step-monday-title" hidden><h2 id="step-monday-title" tabindex="-1">第一教学周</h2>
         <p class="calculated" id="teaching-summary"></p>
       </section>
-      <section class="step" aria-labelledby="step-first-title" hidden><h2 id="step-first-title" tabindex="-1"><span>4 / 7</span> <b id="first-exam-title">秋学期考试</b></h2>
+      <section class="step" aria-labelledby="step-first-title" hidden><h2 id="step-first-title" tabindex="-1"><b id="first-exam-title">秋学期考试</b></h2>
         <div class="step-actions"><span id="first-exam-count">0 天</span></div>
         <div id="first-exam-list" class="exam-list"></div>
       </section>
-      <section class="step" aria-labelledby="step-second-title" hidden><h2 id="step-second-title" tabindex="-1"><span>5 / 7</span> <b id="second-exam-title">冬学期考试</b></h2>
+      <section class="step" aria-labelledby="step-second-title" hidden><h2 id="step-second-title" tabindex="-1"><b id="second-exam-title">冬学期考试</b></h2>
         <p id="second-exam-selection" class="calculated" aria-live="polite"></p>
         <div class="step-actions"><button class="text-button" id="clear-second">清除考试日期</button></div>
       </section>
-      <section class="step" aria-labelledby="step-holidays-title" hidden><h2 id="step-holidays-title" tabindex="-1"><span>6 / 7</span> 放假日期</h2>
+      <section class="step" aria-labelledby="step-holidays-title" hidden><h2 id="step-holidays-title" tabindex="-1">放假日期</h2>
         <div id="holiday-presets" class="holiday-presets" role="group" aria-label="选择预设节日"></div>
         <p id="holiday-shared" class="hint" hidden></p>
         <div id="holiday-name-field" class="step-fields"><div><label for="holiday-name">放假名称</label><input id="holiday-name" maxlength="80" placeholder="填写其他放假名称"></div></div>
@@ -62,7 +67,7 @@
         <div class="step-actions"><button id="save-holiday" class="primary">保存假期</button><button id="skip-holiday" class="text-button">暂时跳过</button><button id="custom-holiday" class="text-button">其他放假</button><button id="cancel-holiday" class="text-button" hidden>取消编辑</button></div>
         <details id="holiday-records" class="foldout records-foldout" hidden><summary id="holiday-record-count"></summary><div id="holiday-list" class="arrangement-list"></div></details>
       </section>
-      <section class="step" aria-labelledby="step-adjustments-title" hidden><h2 id="step-adjustments-title" tabindex="-1"><span>7 / 7</span> 课程对调与补课</h2>
+      <section class="step" aria-labelledby="step-adjustments-title" hidden><h2 id="step-adjustments-title" tabindex="-1">课程对调与补课</h2>
         <div id="adjustment-kind" class="adjustment-options" role="group" aria-label="调整方式"><button type="button" data-adjustment-kind="swap" aria-pressed="true">课程对调</button><button type="button" data-adjustment-kind="makeup" aria-pressed="false">补课</button></div>
         <p id="adjustment-hint" class="hint" hidden></p>
         <div class="step-actions"><button id="save-adjustment" class="primary">添加调课</button><button id="clear-adjustment" class="text-button" hidden>清除选择</button><button id="cancel-adjustment" class="text-button" hidden>取消编辑</button></div>

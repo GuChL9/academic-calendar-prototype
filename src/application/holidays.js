@@ -1,5 +1,5 @@
 export function holidayPresets(half) {
-  return half === 'autumn' ? ['中秋节', '国庆节', '元旦', '春节'] : ['元旦', '春节', '清明节', '劳动节', '端午节'];
+  return half === 'autumn' ? ['中秋节', '国庆节', '元旦'] : ['清明节', '劳动节', '端午节'];
 }
 export function matchesHoliday(record, name) {
   const names = record.name.split(/[、，,／/+＋&\s和与及]+/).map(part => part.replace(/节$/, ''));
