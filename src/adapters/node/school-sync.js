@@ -14,7 +14,10 @@ export function createSchoolFetcher(fetchImpl = globalThis.fetch) {
         const location = response.headers.get('location');
         await response.body?.cancel();
         if (!location) throw new Error('学校来源返回空跳转');
-        url = schoolUrl(location, url); continue;
+        const target = new URL(location, url);
+        try { url = schoolUrl(target.href); }
+        catch { throw new Error(`学校来源跳转至 ${target.origin}，不属于已配置的校历来源`); }
+        continue;
       }
       if (!response.ok) { await response.body?.cancel(); throw new Error(`学校来源暂不可用 (${response.status})`); }
       if (Number(response.headers.get('content-length')) > 5 * 1024 * 1024) { await response.body?.cancel(); throw new Error('学校附件超出读取大小'); }
