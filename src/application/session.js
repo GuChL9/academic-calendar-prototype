@@ -110,7 +110,8 @@ function navigate(state, direction) {
   if (next < 0 || next >= STEP_MODES.length) return;
   if (state.step === 1 && direction > 0 && state.anchor) throw new Error('请再选择制表末日，或清除本次选择');
   if (state.step === 4 && direction > 0 && state.anchor) throw new Error('请再选择考试末日，或清除本次选择');
-  if (state.step === 5 && direction > 0 && holidayChanged(state)) throw new Error('请先保存放假日期，或取消编辑后继续');
+  const draftIssue = direction > 0 && forwardDraftIssue(state, next);
+  if (draftIssue) throw new Error(draftIssue);
   let pending = state.step === 1 && direction > 0 && state.rangeDraft ? { ...state.config, range: state.rangeDraft } : null;
   let newCalendar = false;
   if (state.step === 0 && direction > 0) {
@@ -131,24 +132,34 @@ export function holidayChanged(state) {
   const draft = state.holiday, record = state.config.holidays[draft.editing];
   return record ? draft.name.trim() !== record.name || JSON.stringify(draft.dates) !== JSON.stringify(record.dates) : draft.dates.length > 0;
 }
+function forwardDraftIssue(state, index) {
+  const returningToAdjustment = index === 6 && (state.adjustment.dates.some(Boolean) || state.adjustment.editing !== null);
+  if (index > 5 && holidayChanged(state) && !returningToAdjustment) return '请先保存放假日期，或取消编辑后继续';
+  return null;
+}
+/** 步骤条和会话共用可达性规则；后退保留草稿，前进可返回草稿所在步骤。 */
+export function stepNavigationIssue(state, index) {
+  if (!Number.isInteger(index) || index < 0 || index >= STEP_MODES.length) return '请选择有效的步骤';
+  if (index === state.step) return null;
+  if (state.step === 0) return '请先选择导入校历或自行制表';
+  if (index < state.step) return null;
+  if (state.rangeDraft && (state.rangeDraft.start !== state.config.range.start || state.rangeDraft.end !== state.config.range.end)) {
+    return '请点击下一步应用制表范围，或清除本次选择后跳转';
+  }
+  return forwardDraftIssue(state, index);
+}
 /** 直达步骤仅切换视图；需要保存的草稿在原步骤处理，单端点可安全取消。 */
 function goToStep(state, index) {
-  if (!Number.isInteger(index) || index < 0 || index >= STEP_MODES.length) throw new Error('请选择有效的步骤');
+  const issue = stepNavigationIssue(state, index);
+  if (issue) throw new Error(issue);
   if (index === state.step) return;
-  if (state.step === 0) throw new Error('请先选择导入校历或自行制表');
-  const pendingHoliday = holidayChanged(state), pendingAdjustment = state.adjustment.dates.some(Boolean) || state.adjustment.editing !== null;
-  const returningToDraft = (index === 5 && pendingHoliday) || (index === 6 && pendingAdjustment);
-  if (pendingHoliday && !returningToDraft) throw new Error('请先返回放假日期保存，或取消编辑后跳转');
-  if (pendingAdjustment && !returningToDraft) throw new Error('请先返回调课保存，或清除选择、取消编辑后跳转');
-  if (state.rangeDraft && (state.rangeDraft.start !== state.config.range.start || state.rangeDraft.end !== state.config.range.end)) {
-    throw new Error('请点击下一步应用制表范围，或清除本次选择后跳转');
-  }
   if (state.anchor) state.message = '已取消未完成的日期选择，已保存安排保持不变';
   state.entryReturn = index === 0 ? { step: state.step, finished: state.finished } : null;
   state.step = index; state.finished = false; state.selected = null; state.anchor = null; state.rangeDraft = null;
   state.yearInput = state.config.academicYear; state.halfInput = state.config.half;
 }
 function finish(state) {
+  // 范围草稿和考试锚点已由进入本步的导航提交或清除；跨步骤保留的草稿在此统一检查。
   if (holidayChanged(state)) throw new Error('请先返回放假日期保存，或取消编辑后完成制表');
   if (state.adjustment.dates.some(Boolean) || state.adjustment.editing !== null) {
     throw new Error('请先保存调课，或清除选择、取消编辑后完成制表。');
@@ -252,9 +263,16 @@ function reduce(state, action) {
       break;
     }
     case 'escape':
+      if (modeOf(state) === 'holiday' && holidayChanged(state)) {
+        state.message = '放假日期尚未保存，草稿已保留；可保存或点击“取消编辑”。';
+        break;
+      }
+      if (modeOf(state) === 'adjustment' && (state.adjustment.dates.some(Boolean) || state.adjustment.editing !== null)) {
+        state.message = '调课草稿已保留；可保存、清除选择或取消编辑。';
+        break;
+      }
+      if (state.anchor || state.rangeDraft) state.message = '已取消本次日期选择，已保存安排保持不变';
       state.anchor = null; state.rangeDraft = null;
-      if (modeOf(state) === 'holiday') resetHoliday(state);
-      if (modeOf(state) === 'adjustment') resetAdjustment(state);
       break;
     case 'school-import':
     case 'import':

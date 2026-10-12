@@ -55,3 +55,21 @@ test('没有周一的短范围也能导出',()=>{
   const files=unzipStore(X.createXlsx({...C.blankConfig(2023),range:{start:'2023-07-01',end:'2023-07-02'}}));
   assert.doesNotMatch(files['xl/worksheets/sheet1.xml'],/null|NaN|undefined/);
 });
+
+test('Excel 在 1900 年的日期边界与逐日、放假和调课清单一致',()=>{
+  const range={start:'1900-01-01',end:'1900-03-01'};
+  const config={...C.blankConfig(1900),range,canvasRange:range,
+    holidays:[{name:'边界测试',dates:['1900-01-01','1900-02-28','1900-03-01']}],
+    adjustments:[{kind:'swap',date:'1900-01-01',targetDate:'1900-02-28'}]};
+  const files=unzipStore(X.createXlsx(config));
+  const numberAt=(sheet,ref)=>Number(files[`xl/worksheets/sheet${sheet}.xml`].match(new RegExp(`<c r="${ref}"[^>]*><v>([^<]+)</v>`))[1]);
+  assert.equal(numberAt(1,'B5'),1);
+  assert.equal(numberAt(2,'A2'),1);
+  assert.equal(numberAt(2,'A60'),59);
+  assert.equal(numberAt(2,'A61'),61);
+  assert.equal(numberAt(2,'J2'),59);
+  assert.equal(numberAt(3,'C2'),1);
+  assert.equal(numberAt(3,'C3'),59);
+  assert.equal(numberAt(3,'C4'),61);
+  assert.equal(numberAt(3,'D5'),59);
+});

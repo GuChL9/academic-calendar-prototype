@@ -191,8 +191,8 @@ test('配置和数据两种 JSON 均可导入，重复日期去重',()=>{
   assert.throws(()=>C.parseConfig('null'),/JSON 对象/);
   assert.throws(()=>C.parseConfig(JSON.stringify({...c,schemaVersion:2})));
 });
-test('2000—2040 年全部完整日历日期连续且与星期网格一致',()=>{
-  for(let year=2000;year<=2040;year++)for(const half of ['autumn','spring']) {
+test('全部支持学年的日历日期连续且与星期、月份网格一致',()=>{
+  for(let year=1900;year<=2198;year++)for(const half of ['autumn','spring']) {
     const out=C.generateCalendar(C.blankConfig(year,half));
     assert.equal(out.days.length,new Set(out.days.map(d=>d.date)).size);
     assert.equal(out.weeks.flatMap(w=>w.cells).filter(Boolean).length,out.days.length);

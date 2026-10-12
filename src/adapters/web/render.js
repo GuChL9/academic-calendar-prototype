@@ -17,7 +17,7 @@ export function createRenderer(calendarKeyboard) {
     const [first, second] = C.TERMS[config.half];
     const names = ['新建校历', '制表范围', '第一教学周', `${first}学期考试`, `${second}学期考试`, '放假日期', '课程对调与补课'];
     steps.forEach((step, index) => { step.hidden = index !== currentStep; });
-    steps[currentStep].querySelector('h2').after($('mode-banner'));
+    if ($('mode-banner').parentElement !== steps[currentStep]) steps[currentStep].querySelector('h2').after($('mode-banner'));
     document.querySelector('.step-navigation').hidden = currentStep === 0;
     $('new-calendar').hidden = currentStep === 0 && !finished;
     $('cancel-new').hidden = !snapshot.entryReturn;
@@ -84,7 +84,7 @@ export function createRenderer(calendarKeyboard) {
     const unavailable = mode === 'monday' ? day.weekday !== 1 : mode === 'second' && (!earliest || day.date < earliest);
     const description = [formatDisplayDate(day.date), day.weekdayLabel, day.teachingLabel, ...day.exams.map(x => x + '学期考试'), day.vacation,
       ...day.holidays.map(h => `${h.name}放假`), ...links.map(x=>x.description), role>=0 ? `已选${role===0?' A':' B'}` : ''].filter(Boolean).join('，');
-    const pressed = mode === 'monday' ? config.firstMonday === day.date : currentStep === 6 && (mode === 'adjustment' || adjustmentSelection.some(Boolean)) ? role >= 0 : mode === 'holiday' ? holidaySelection.includes(day.date) : mode === 'first' ? config.firstExams.includes(day.date) : currentStep === 1 ? Boolean(anchor === day.date || rangeClasses(day)) : selected === day.date;
+    const pressed = mode === 'monday' ? config.firstMonday === day.date : currentStep === 6 && (mode === 'adjustment' || adjustmentSelection.some(Boolean)) ? role >= 0 : mode === 'holiday' ? holidaySelection.includes(day.date) : mode === 'first' ? config.firstExams.includes(day.date) : currentStep === 1 ? Boolean(anchor === day.date || rangeDraft?.start === day.date || rangeDraft?.end === day.date) : selected === day.date;
     const marks = C.dayMarkers(day);
     const inspecting = currentStep !== 1 && (currentStep !== 6 || (mode !== 'adjustment' && !adjustmentSelection.some(Boolean)));
     return `<button type="button" class="date-button ${role>=0?'adjustment-picked adjustment-'+role+' ':''}${links.length?'has-adjustment ':''}${(mode === 'monday' ? (pressed ? 'selected ' : '') : mode === 'holiday' ? (pressed ? 'holiday-picked ' : '') : inspecting && selected === day.date ? 'selected ' : '') + (anchor === day.date ? 'anchor' : '')}" data-date="${day.date}" data-linked-dates="${[...new Set(links.map(link=>link.target))].join(' ')}" ${unavailable?'disabled ':''}aria-label="${escape(description)}" aria-pressed="${pressed}" title="${escape(description)}"><span class="date-number">${day.day}</span>${marks ? `<em class="date-markers" aria-hidden="true">${[...marks].map(mark => `<span>${mark}</span>`).join('')}</em>` : ''}${role>=0?`<b class="adjustment-role" aria-hidden="true">${role===0?'A':'B'}</b>`:''}${links.length?`<small class="adjustment-link" aria-hidden="true">${links[0].text}${links.length>1?' +':''}</small>`:''}</button>`;

@@ -1,4 +1,4 @@
-import { stepNames } from '../../application/session.js';
+import { stepNames, stepNavigationIssue } from '../../application/session.js';
 
 /** 步骤条只标识当前位置，填写完成度由配置校验负责。按钮可用键盘直接操作。 */
 export function mountStepNavigation(go, currentState) {
@@ -18,7 +18,9 @@ export function mountStepNavigation(go, currentState) {
     buttons.forEach((button, index) => {
       button.setAttribute('aria-label', `${index + 1} · ${names[index]}`);
       button.querySelector('.step-label').textContent = labels[index];
-      button.disabled = state.step === 0 && index !== 0;
+      const issue = stepNavigationIssue(state, index);
+      button.disabled = Boolean(issue);
+      button.title = issue || '';
       if (index === state.step) button.setAttribute('aria-current', 'step'); else button.removeAttribute('aria-current');
     });
   }

@@ -10,6 +10,7 @@ import { blankConfig, exportData, generateCalendar } from '../src/core/index.js'
 import { createSession } from '../src/application/session.js';
 import { createStorage } from '../src/adapters/web/storage.js';
 import { createXlsx } from '../src/export/xlsx.js';
+import { matchesHoliday } from '../src/application/holidays.js';
 
 const file = year => fs.readFileSync(new URL(`./fixtures/zju-${year}.xlsx`, import.meta.url));
 const sheets = year => readSchoolWorkbook(file(year));
@@ -49,6 +50,25 @@ test('月日格式的旧序列年份由学年确定，跨年补课和合并假�
   assert.ok(s.warnings.some(item => item.includes('小学期')));
   assert.deepEqual(parsed(2026).candidates[0].config.adjustments.at(-1), { kind: 'makeup', date: '2027-01-04', targetDate: '2026-12-31' });
   assert.equal(parsed(2024).candidates[0].config.adjustments.length, 5);
+});
+
+test('学校原文国际劳动节对应劳动节预设，编辑与撤销保持同一记录', () => {
+  for (const year of [2023, 2024]) {
+    const config = parsed(year).candidates.find(item => item.config.half === 'spring').config;
+    const original = config.holidays.find(item => item.name === '国际劳动节');
+    assert.ok(matchesHoliday(original, '劳动节'));
+    assert.equal(matchesHoliday({ name: '劳动教育日' }, '劳动节'), false);
+    const session = createSession(config, { currentStep:5 });
+    session.dispatch({ type:'holiday-preset', name:'劳动节' });
+    assert.deepEqual(session.getState().holiday.dates, original.dates);
+    assert.equal(session.getState().holiday.name, '国际劳动节');
+    session.dispatch({ type:'select-date', date:original.dates[0] });
+    session.dispatch({ type:'holiday-save' });
+    assert.equal(session.getState().config.holidays.length, config.holidays.length - (original.dates.length === 1 ? 1 : 0));
+    assert.ok(!session.getState().config.holidays.some(item => item.name === '劳动节'));
+    assert.deepEqual(session.dispatch({ type:'undo' }).config, config);
+    assert.ok(exportData(session.getState().config).days.find(day => day.date === original.dates[0]).holidays.some(item => item.name === '国际劳动节'));
+  }
 });
 
 test('破损日期、非 8+8 周、重复版本都不会静默导入', () => {

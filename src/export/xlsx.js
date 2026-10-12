@@ -5,6 +5,8 @@ import { escapeXml as escape, columnName } from './xml.js';
 /** 以统一逐日结果生成校历、逐日数据、放假与调课三个工作表。 */
 const ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 const decl = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+// Excel 的 1900 日期系统为不存在的 2 月 29 日保留了序号 60。
+const excelDate = date => C.serial(date) + (date < '1900-03-01' ? 25568 : 25569);
 export function createXlsx(input) {
   const calendar = C.generateCalendar(input), cfg = calendar.config, terms = C.TERMS[cfg.half];
   const styleRecords = [], styleMap = new Map();
@@ -53,7 +55,7 @@ export function createXlsx(input) {
       const d=w.cells[r]; if(!d) {cells.push(cell('',r+5,i+1)); return;}
       const b=C.monthBorders(calendar,i,r), mask=Number(b.top) | Number(b.right)*2 | Number(b.bottom)*4 | Number(b.left)*8;
       const fill=d.exams.length?4:d.isHoliday?6:d.vacation?3:d.isWeekend?5:0;
-      cells.push(cell(C.serial(d.date)+25569,r+5,i+1,style(fill,mask,dayFormat(d),d.isWeekend?3:0)));
+      cells.push(cell(excelDate(d.date),r+5,i+1,style(fill,mask,dayFormat(d),d.isWeekend?3:0)));
     });
     rows.push(row(r+5,cells,32));
   }
@@ -66,7 +68,7 @@ export function createXlsx(input) {
   const headers=['日期','自然星期','自然周周一','所属学期','教学周','周次名称','考试学期','寒暑假','是否周末','原课程日期','放假','课程对调与补课','原课程日期的自然星期'];
   const detail=[row(1,headers.map((h,i)=>cell(h,1,i,style(2,0,0,2))),28)];
   calendar.days.forEach((d,i)=>{
-    const values=[C.serial(d.date)+25569,d.weekdayLabel,C.serial(d.naturalWeekMonday)+25569,d.term?d.term+'学期':'',d.teachingWeek??'',d.teachingLabel??'',d.exams.map(x=>x+'学期').join('、'),d.vacation??'',d.isWeekend?'是':'否',d.effectiveScheduleDate?C.serial(d.effectiveScheduleDate)+25569:'',
+    const values=[excelDate(d.date),d.weekdayLabel,excelDate(d.naturalWeekMonday),d.term?d.term+'学期':'',d.teachingWeek??'',d.teachingLabel??'',d.exams.map(x=>x+'学期').join('、'),d.vacation??'',d.isWeekend?'是':'否',d.effectiveScheduleDate?excelDate(d.effectiveScheduleDate):'',
       d.holidays.map(h=>h.name).join('、'),
       d.scheduleChanges.map(a=>`${a.kind==='swap'?'对调':'补课'}，按 ${a.targetDate} 原安排`).join('；'),d.effectiveScheduleDate?C.WEEKDAYS[C.weekday(d.effectiveScheduleDate)]:''];
     detail.push(row(i+2,values.map((v,j)=>cell(v,i+2,j,style(0,0,[0,2,9].includes(j)?165:0))),22));
@@ -74,7 +76,7 @@ export function createXlsx(input) {
   const sheet2=decl+`<worksheet xmlns="${ns}"><sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="11" width="18" customWidth="1"/><col min="12" max="12" width="65" customWidth="1"/><col min="13" max="13" width="24" customWidth="1"/></cols><sheetData>${detail.join('')}</sheetData><autoFilter ref="A1:M${detail.length}"/></worksheet>`;
   const arrangementRows=[row(1,['类型','名称','放假 / 执行日期','原课程日期','执行方式'].map((v,i)=>cell(v,1,i,style(2,0,0,2))),28)];
   const arrangementItems=[...cfg.holidays.flatMap(h=>h.dates.map(date=>['放假',h.name,date,'','逐日选定的放假日期'])),...cfg.adjustments.map(a=>[a.kind==='swap'?'课程对调':'补课','',a.date,a.targetDate,a.kind==='swap'?'双向交换两个日期的原安排':'仅执行日期采用原课程日期的安排'])];
-  arrangementItems.forEach((values,i)=>arrangementRows.push(row(i+2,values.map((v,j)=>cell((j===2||j===3)&&v?C.serial(v)+25569:v,i+2,j,style(0,0,j===2||j===3?165:0))),25)));
+  arrangementItems.forEach((values,i)=>arrangementRows.push(row(i+2,values.map((v,j)=>cell((j===2||j===3)&&v?excelDate(v):v,i+2,j,style(0,0,j===2||j===3?165:0))),25)));
   const sheet3=decl+`<worksheet xmlns="${ns}"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="16" customWidth="1"/><col min="2" max="2" width="28" customWidth="1"/><col min="3" max="4" width="23" customWidth="1"/><col min="5" max="5" width="50" customWidth="1"/></cols><sheetData>${arrangementRows.join('')}</sheetData><autoFilter ref="A1:E${arrangementRows.length}"/></worksheet>`;
   const borderXml=Array.from({length:16},(_,mask)=>'<border>'+[['left',8],['right',2],['top',1],['bottom',4]].map(([edge,bit])=>`<${edge} style="${mask&bit?'medium':'thin'}"><color rgb="FF${mask&bit?'58616B':'E0E3E7'}"/></${edge}>`).join('')+'<diagonal/></border>').join('');
   const colors=['F1F4F7','F6F7F9','FCE0DD','F2F4F7','F7D6DF'];

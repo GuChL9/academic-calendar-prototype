@@ -16,11 +16,12 @@ export function attachCalendar(calendar) {
     if (button) lastDate = button.dataset.date;
     return button;
   }
-  function refresh(preferredDate) {
+  // 优先保持当前与上次的有效焦点，起点日期仅作为首次进入或原日期不可选时的兜底。
+  function refresh(fallbackDate) {
     const available = buttons().filter(button => !button.disabled);
     const active = available.includes(doc.activeElement) ? doc.activeElement : null;
     return choose(active || available.find(button => button.dataset.date === lastDate)
-      || available.find(button => button.dataset.date === preferredDate)
+      || available.find(button => button.dataset.date === fallbackDate)
       || available.sort((a, b) => a.dataset.date.localeCompare(b.dataset.date))[0]);
   }
   function focusDate(date) {
