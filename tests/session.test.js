@@ -1,12 +1,76 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { addDays, blankConfig, exportData, generateCalendar, normalizeConfig } from '../src/core/index.js';
-import { createSession, modeOf, previewConfig, secondExamEarliest, stepNavigationIssue } from '../src/application/session.js';
+import { createSession, modeOf, previewConfig, secondExamEarliest, stepNavigationIssue, actionIssue } from '../src/application/session.js';
 import { examples } from './fixtures.js';
 
 const open = (step, config = examples.autumn) => createSession(config, { currentStep: step });
 const act = (session, type, fields = {}) => session.dispatch({ type, ...fields });
 const pick = (session, date) => act(session, 'select-date', { date });
+
+function verifyAction(session, type, allowed) {
+  const before = session.getState(), issue = actionIssue(before, type);
+  assert.deepEqual(session.getState(), before, '查询可用性不会改写会话');
+  assert.equal(issue === null, allowed);
+  if (issue) {
+    assert.throws(() => act(session, type), error => error.message === issue);
+    assert.deepEqual(session.getState(), before, '受阻操作保留草稿和历史');
+  } else return act(session, type);
+}
+
+test('放假提交可用性覆盖空日期、空名称、修改、删除和撤销', () => {
+  const session = open(5);
+  verifyAction(session, 'holiday-save', false);
+  act(session, 'holiday-custom'); pick(session, '2023-10-01');
+  verifyAction(session, 'holiday-save', false);
+  act(session, 'holiday-name', { value: '  ' });
+  verifyAction(session, 'holiday-save', false);
+  act(session, 'holiday-name', { value: '校庆' });
+  assert.equal(verifyAction(session, 'holiday-save', true).config.holidays[0].name, '校庆');
+  act(session, 'holiday-edit', { index: 0 });
+  pick(session, '2023-10-01');
+  const deleted = verifyAction(session, 'holiday-save', true);
+  assert.deepEqual(deleted.config.holidays, []);
+  assert.match(deleted.message, /已删除/);
+  assert.equal(act(session, 'undo').config.holidays[0].name, '校庆');
+});
+
+test('调课提交可用性覆盖单端点、冲突、方式切换和编辑原记录', () => {
+  const session = open(6, { ...examples.autumn, adjustments: [{ kind:'swap', date:'2023-10-07', targetDate:'2023-10-05' }] });
+  verifyAction(session, 'adjustment-save', false);
+  pick(session, '2023-10-08'); verifyAction(session, 'adjustment-save', false);
+  pick(session, '2023-10-05'); verifyAction(session, 'adjustment-save', false);
+  act(session, 'adjustment-kind', { kind:'makeup' });
+  assert.equal(verifyAction(session, 'adjustment-save', true).config.adjustments.length, 2);
+  act(session, 'adjustment-edit', { index:0 });
+  assert.equal(verifyAction(session, 'adjustment-save', true).config.adjustments.length, 2);
+});
+
+test('下一步与步骤条共用草稿限制，完整范围仍可通过下一步应用', () => {
+  const range = open(1);
+  pick(range, '2023-08-01'); verifyAction(range, 'next', false);
+  pick(range, '2024-01-28');
+  assert.match(stepNavigationIssue(range.getState(), 2), /下一步应用/);
+  assert.equal(verifyAction(range, 'next', true).config.range.start, '2023-08-01');
+  const exam = open(4);
+  pick(exam, '2024-01-10'); verifyAction(exam, 'next', false);
+  act(exam, 'clear-selection'); verifyAction(exam, 'next', true);
+  const holiday = open(5);
+  pick(holiday, '2023-10-01');
+  assert.equal(actionIssue(holiday.getState(), 'next'), stepNavigationIssue(holiday.getState(), 6));
+  verifyAction(holiday, 'next', false);
+  act(holiday, 'holiday-save'); verifyAction(holiday, 'next', true);
+});
+
+test('完成按钮可用性检查跨步骤草稿，处理后可完成未完整配置', () => {
+  const session = open(6, blankConfig(2023));
+  pick(session, '2023-10-07'); verifyAction(session, 'next', false);
+  act(session, 'previous'); pick(session, '2023-10-01');
+  verifyAction(session, 'next', true); // 返回另一份已有草稿。
+  act(session, 'adjustment-clear'); verifyAction(session, 'next', false);
+  act(session, 'previous'); act(session, 'holiday-cancel'); verifyAction(session, 'next', true);
+  assert.equal(verifyAction(session, 'next', true).finished, true);
+});
 
 test('范围在下一步提交，选日条带保留完整空表', () => {
   const session = open(1), config = session.getState().config;

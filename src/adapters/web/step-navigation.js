@@ -1,4 +1,5 @@
 import { stepNames, stepNavigationIssue } from '../../application/session.js';
+import { setAvailability } from './controls.js';
 
 /** 步骤条只标识当前位置，填写完成度由配置校验负责。按钮可用键盘直接操作。 */
 export function mountStepNavigation(go, currentState) {
@@ -16,11 +17,9 @@ export function mountStepNavigation(go, currentState) {
     const names = stepNames(state.config);
     const labels = ['新建', '范围', '教学周', names[3].replace('学期', ''), names[4].replace('学期', ''), '假期', '调课'];
     buttons.forEach((button, index) => {
-      button.setAttribute('aria-label', `${index + 1} · ${names[index]}`);
       button.querySelector('.step-label').textContent = labels[index];
       const issue = stepNavigationIssue(state, index);
-      button.disabled = Boolean(issue);
-      button.title = issue || '';
+      setAvailability(button, issue, `${index + 1} · ${names[index]}`);
       if (index === state.step) button.setAttribute('aria-current', 'step'); else button.removeAttribute('aria-current');
     });
   }

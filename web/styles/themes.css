@@ -747,6 +747,12 @@ body:not(.calendar-finished) #export-xlsx:hover:where(:not(:disabled)) {
   background:#923f3410
 }
 
+#save-holiday.danger-button {
+  color:#923f34;
+  border-color:#923f3466;
+  background:#923f340a
+}
+
 .adjustment-preview {
   padding:10px 24px;
   border-color:var(--line);

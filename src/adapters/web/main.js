@@ -9,6 +9,7 @@ import { mountFeedback } from './feedback.js';
 import { filename, download, readConfiguration } from './files.js';
 import { mountSchoolImport } from './school-import.js';
 import { mountStepNavigation } from './step-navigation.js';
+import { captureFocus, restoreFocus } from './controls.js';
 
 const $ = id => document.getElementById(id);
 const now = new Date();
@@ -45,6 +46,7 @@ const feedback = mountFeedback();
 /** 用户动作只进入一个制表会话；呈现、持久化和焦点处理消费同一结果。 */
 function dispatch(action, navigation = false) {
   const update = () => {
+    const previousFocus = captureFocus();
     const before = session.getState();
     const state = session.dispatch(action);
     render(state);
@@ -66,6 +68,7 @@ function dispatch(action, navigation = false) {
     if (action.type === 'holiday-custom') $('holiday-name').focus();
     if (action.type === 'holiday-edit') $('save-holiday').focus();
     if (action.type === 'adjustment-edit') $('adjustment-kind').querySelector('[aria-pressed="true"]').focus();
+    restoreFocus(previousFocus);
   };
   const transition = navigation || ['undo', 'import', 'density'].includes(action.type);
   try { transition ? motion.navigate(update) : update(); }

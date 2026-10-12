@@ -1,7 +1,8 @@
 import * as C from '../../core/index.js';
-import { modeOf, previewConfig, holidayChanged, secondExamEarliest } from '../../application/session.js';
+import { modeOf, previewConfig, holidayChanged, secondExamEarliest, actionIssue } from '../../application/session.js';
 import { holidayPresets as presets, nextUnsetHoliday as nextHoliday, nextHolidayPreset, matchesHoliday } from '../../application/holidays.js';
 import { escape, formatDisplayDate, formatDisplayRange, shortDate } from './format.js';
+import { setAvailability } from './controls.js';
 
 /** 将一次制表快照呈现到固定界面；配置变更由制表会话统一处理。 */
 export function createRenderer(calendarKeyboard) {
@@ -23,12 +24,13 @@ export function createRenderer(calendarKeyboard) {
     $('cancel-new').hidden = !snapshot.entryReturn;
     $('previous-step').disabled = currentStep === 0;
     $('next-step').textContent = currentStep < steps.length - 1 ? `下一步：${names[currentStep + 1]}` : '完成制表';
+    setAvailability($('next-step'), actionIssue(snapshot, 'next'));
     // 当前卡片只强调一个提交操作；草稿处理完毕后将重点交还给继续流程。
     const savingHoliday = currentStep === 5 && holidayChanged(snapshot);
     const savingAdjustment = currentStep === 6 && (adjustmentSelection.some(Boolean) || editingAdjustment !== null);
-    $('save-holiday').classList.toggle('primary', savingHoliday);
-    $('save-adjustment').classList.toggle('primary', savingAdjustment);
-    $('next-step').classList.toggle('primary', !savingHoliday && !savingAdjustment);
+    $('save-holiday').classList.toggle('primary', savingHoliday && holidaySelection.length > 0 && !actionIssue(snapshot, 'holiday-save'));
+    $('save-adjustment').classList.toggle('primary', savingAdjustment && !actionIssue(snapshot, 'adjustment-save'));
+    $('next-step').classList.toggle('primary', !savingHoliday && !savingAdjustment && !$('next-step').disabled);
     $('settings').hidden = finished;
     $('continue-edit').hidden = !finished;
     $('mode-banner').hidden = finished || currentStep === 0;
@@ -41,10 +43,15 @@ export function createRenderer(calendarKeyboard) {
       monday: '点击第一教学周的周一，自动生成 8 + 8 周。',
       first: `逐日点选${first}学期考试日，再点取消。`,
       second: anchor ? `已选 ${formatDisplayDate(anchor)}，再点另一个端点。` : `点击${second}学期考试首尾两日，自动保存。`,
-      holiday: `点选${holidayPreset || $('holiday-name').value || '其他'}放假日期，再点取消；选好后保存。`,
+      holiday: editingHoliday !== null && !holidaySelection.length ? '可重新点选日期，或删除此项放假。' : '点选放假日期，再点取消；选好后保存。',
       adjustment: adjustmentSelection.filter(Boolean).length === 2 ? '点击已选日期可重选，选好后保存。' : adjustmentSelection.some(Boolean) ? `请再点击${adjustmentKind === 'makeup' ? (adjustmentSelection[0] ? '原课程日' : '实际补课日') : '要对调的另一日期'}。` : adjustmentKind === 'makeup' ? '先点实际补课日，再点原课程日。' : '依次点击要对调的两个日期。'
     };
     $('mode-message').textContent = ['first','second'].includes(mode) && !config.firstMonday ? '请先返回“第一教学周”步骤，点击一个周一，再选择考试日期。' : messages[mode];
+    // 可见提示同步说明缺少名称、调课冲突和跨步骤草稿，无需额外弹窗或增加卡片高度。
+    const issue = mode === 'holiday' && holidaySelection.length ? actionIssue(snapshot, 'holiday-save')
+      : mode === 'adjustment' && adjustmentSelection.filter(Boolean).length === 2 ? actionIssue(snapshot, 'adjustment-save')
+      : mode === 'adjustment' && holidayChanged(snapshot) ? actionIssue(snapshot, 'next') : null;
+    if (issue) $('mode-message').textContent = issue.replace(' 已有调课安排，请先修改或删除原安排', ' 已有调课，请先修改或删除');
     $('exit-mode').hidden = !((mode === 'range' && (anchor || rangeDraft)) || (mode === 'second' && anchor));
     $('exit-mode').textContent = '清除本次选择';
     $('second-exam-selection').textContent = config.secondExams ? formatDisplayRange(config.secondExams) : '尚未设置考试日期';
@@ -146,6 +153,7 @@ export function createRenderer(calendarKeyboard) {
     }
     renderHolidayPresets();
     $('save-adjustment').textContent = editingAdjustment === null ? '添加调课' : '保存调课修改';
+    setAvailability($('save-adjustment'), actionIssue(snapshot, 'adjustment-save'));
     $('cancel-adjustment').hidden = editingAdjustment === null;
     updateAdjustmentLabels();
   }
@@ -153,7 +161,7 @@ export function createRenderer(calendarKeyboard) {
     $('holiday-selection').textContent = `已选 ${holidaySelection.length} 天`;
     $('holiday-dates').hidden = !holidaySelection.length;
     $('holiday-empty').hidden = Boolean(holidaySelection.length);
-    $('holiday-empty').textContent = editingHoliday !== null ? '已选 0 天，保存后将清除此项放假安排。' : '已选 0 天';
+    $('holiday-empty').textContent = editingHoliday !== null ? '已选 0 天，删除后可撤销。' : '已选 0 天';
     if (!holidaySelection.length) $('holiday-dates').open = false;
     $('holiday-date-list').innerHTML = holidaySelection.map(date=>`<button type="button" class="exam-chip holiday-chip" data-remove-holiday-date="${date}" aria-label="移除放假日期 ${formatDisplayDate(date)}">${formatDisplayDate(date)} ×</button>`).join('');
   }
@@ -169,12 +177,16 @@ export function createRenderer(calendarKeyboard) {
     const shared = Boolean(record) && names.filter(name => matchesHoliday(record, name)).length > 1;
     $('holiday-shared').hidden = !shared;
     $('holiday-shared').textContent = shared ? `沿用合并记录“${record.name}”，修改后对应节日会一起更新。` : '';
-    $('save-holiday').textContent = holidayPreset && nextUnsetHoliday(holidayPreset) ? '保存并设置下一个节日' : editingHoliday === null ? '保存假期' : '保存修改';
+    const deleting = editingHoliday !== null && !holidaySelection.length;
+    const continuing = holidaySelection.length && holidayPreset && nextUnsetHoliday(holidayPreset);
+    $('save-holiday').textContent = deleting ? '删除此项放假' : continuing ? '保存并继续' : editingHoliday === null ? '保存假期' : '保存修改';
+    $('save-holiday').classList.toggle('danger-button', deleting);
+    setAvailability($('save-holiday'), actionIssue(snapshot, 'holiday-save'), continuing ? '保存并设置下一个节日' : $('save-holiday').textContent);
     const changed = holidayChanged(snapshot);
     // 未设置可跳过，已保存可继续；修改中的取消操作共用同一位置。
     $('skip-holiday').textContent = record ? '下个节日' : '暂时跳过';
     $('skip-holiday').hidden = !holidayPreset || changed;
-    $('skip-holiday').disabled = !nextHolidayPreset(config, holidayPreset);
+    setAvailability($('skip-holiday'), nextHolidayPreset(config, holidayPreset) ? null : '已到最后一个预设节日，可直接选择其他节日');
     $('cancel-holiday').hidden = Boolean(holidayPreset) && !changed;
     updateHolidaySelection();
   }
