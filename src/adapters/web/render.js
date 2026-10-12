@@ -23,6 +23,12 @@ export function createRenderer(calendarKeyboard) {
     $('cancel-new').hidden = !snapshot.entryReturn;
     $('previous-step').disabled = currentStep === 0;
     $('next-step').textContent = currentStep < steps.length - 1 ? `下一步：${names[currentStep + 1]}` : '完成制表';
+    // 当前卡片只强调一个提交操作；草稿处理完毕后将重点交还给继续流程。
+    const savingHoliday = currentStep === 5 && holidayChanged(snapshot);
+    const savingAdjustment = currentStep === 6 && (adjustmentSelection.some(Boolean) || editingAdjustment !== null);
+    $('save-holiday').classList.toggle('primary', savingHoliday);
+    $('save-adjustment').classList.toggle('primary', savingAdjustment);
+    $('next-step').classList.toggle('primary', !savingHoliday && !savingAdjustment);
     $('settings').hidden = finished;
     $('continue-edit').hidden = !finished;
     $('mode-banner').hidden = finished || currentStep === 0;
@@ -127,7 +133,7 @@ export function createRenderer(calendarKeyboard) {
     return groups.map(g=>g.start===g.end?formatDisplayDate(g.start):formatDisplayRange(g)).join('；');
   }
   function renderArrangements() {
-    const actions = (kind, index) => `<div class="record-actions"><button data-edit-${kind}="${index}">编辑</button><button data-delete-${kind}="${index}">删除</button></div>`;
+    const actions = (kind, index) => `<div class="record-actions"><button data-edit-${kind}="${index}">编辑</button><button class="text-button danger-button" data-delete-${kind}="${index}">删除</button></div>`;
     $('holiday-list').innerHTML = config.holidays.map((h,i)=>`<div class="arrangement"><div><strong>${escape(h.name)}</strong><p>${holidayDatesText(h.dates)}（${h.dates.length} 天）</p></div>${actions('holiday',i)}</div>`).join('') || '<p class="hint">尚未添加放假日期，可跳过此步。</p>';
     $('adjustment-list').innerHTML = config.adjustments.map((a,i)=>`<div class="arrangement"><div><strong>${a.kind==='swap'?'课程对调':'补课'}</strong><p>${a.kind==='swap'?`${formatDisplayDate(a.date)} ↔ ${formatDisplayDate(a.targetDate)}`:`${formatDisplayDate(a.date)} 补 ${formatDisplayDate(a.targetDate)} 的课`}</p></div>${actions('adjustment',i)}</div>`).join('') || '<p class="hint">尚未添加调课安排。</p>';
     for (const [kind, records] of [['holiday',config.holidays],['adjustment',config.adjustments]]) {

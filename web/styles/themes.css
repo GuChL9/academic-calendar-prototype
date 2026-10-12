@@ -57,11 +57,12 @@
 }
 
 button {
-  min-height:40px;
+  min-height:36px;
   background:var(--paper);
   border-radius:var(--button-radius);
-  padding:9px 16px;
+  padding:8px 14px;
   font-size:13px;
+  line-height:18px;
   font-weight:500;
   transition:background .15s,border-color .15s,box-shadow .15s
 }
@@ -224,9 +225,14 @@ body:not(.calendar-finished) #export-xlsx:hover:where(:not(:disabled)) {
 }
 
 .more-tools>summary {
+  display:flex;
+  align-items:center;
+  min-height:36px;
+  line-height:18px;
+  border:1px solid transparent;
   color:var(--muted);
   border-radius:var(--button-radius);
-  padding:10px 12px
+  padding:8px 12px
 }
 
 .more-tools>summary:hover:where(:not(:disabled)),.more-tools[open]>summary {
@@ -732,7 +738,13 @@ body:not(.calendar-finished) #export-xlsx:hover:where(:not(:disabled)) {
 
 .record-actions button {
   padding:6px 10px;
-  min-height:32px
+  min-height:32px;
+  font-size:12px
+}
+
+.danger-button:hover:where(:not(:disabled)) {
+  color:#923f34;
+  background:#923f3410
 }
 
 .adjustment-preview {
@@ -819,9 +831,7 @@ body:not(.calendar-finished) #export-xlsx:hover:where(:not(:disabled)) {
 }
 
 [data-theme="mist"] .top-actions>.primary {
-  border-radius:999px;
-  padding-left:20px;
-  padding-right:20px
+  border-radius:var(--button-radius)
 }
 
 [data-theme="mist"] .adjustment-options {

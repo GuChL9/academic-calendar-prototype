@@ -39,6 +39,16 @@ export function mountFeedback() {
   }
   function refreshEdges() {
     if (!leftEdge || !rightEdge) return;
+    // 将实际余量连续分配给左侧留白，收窄时自然回到内容区居中，避免阈值处跳动。
+    const area = frame.closest('.calendar-area'), table = calendar.querySelector('.calendar-table');
+    if (area && table) {
+      const legend = area.querySelector('.calendar-legend'), style = getComputedStyle(calendar);
+      const available = area.clientWidth - legend.offsetWidth - table.offsetWidth - parseFloat(style.marginLeft) - parseFloat(style.marginRight) - 2;
+      const inset = getComputedStyle(area).display === 'grid' ? Math.max(0, Math.min(legend.offsetWidth, available)) : 0;
+      const value = inset + 'px';
+      if (area.style.getPropertyValue('--calendar-inset') !== value) area.style.setProperty('--calendar-inset', value);
+      area.classList.toggle('calendar-centered', inset > 0 && inset === legend.offsetWidth);
+    }
     // 实体滚动条占用的高度计入下沿留白，覆盖式滚动条的高度为零。
     const scrollbar = Math.max(0, calendar.offsetHeight - calendar.clientHeight) + 'px';
     if (calendar.style.getPropertyValue('--calendar-scrollbar') !== scrollbar) calendar.style.setProperty('--calendar-scrollbar', scrollbar);
