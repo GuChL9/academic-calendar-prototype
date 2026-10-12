@@ -1,0 +1,175 @@
+/* 动画负责呈现，日期与操作即时更新。 */
+:root {
+  --motion-ease:cubic-bezier(.22,1,.36,1);
+  --motion-short:180ms;
+  --motion-medium:300ms
+}
+
+html {
+  scrollbar-gutter:stable;
+  scroll-behavior:auto
+}
+
+html.navigation-motion,html.navigation-motion body {
+  overflow-anchor:none
+}
+
+html.navigation-motion .settings {
+  display:flex;
+  flex-direction:column
+}
+
+html.navigation-motion .settings .step {
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden
+}
+
+html.navigation-motion .settings .step-navigation {
+  flex-shrink:0;
+  margin-top:auto
+}
+
+[data-theme="paper"] {
+  --motion-medium:340ms
+}
+
+[data-theme="mist"] {
+  --motion-medium:280ms
+}
+
+@media(prefers-reduced-motion:no-preference) {
+  button {
+    transition:background var(--motion-short),border-color var(--motion-short),color var(--motion-short),box-shadow var(--motion-short),transform var(--motion-short) var(--motion-ease)
+  }
+  button:not(.date-button):not(:disabled):active {
+    transform:translateY(1px) scale(.98)
+  }
+  .date-button {
+    transition:background 120ms,box-shadow 120ms
+  }
+  .tools-popover {
+    transform-origin:top right
+  }
+  .more-tools[open] .tools-popover {
+    animation:motion-menu 180ms var(--motion-ease) both
+  }
+  .foldout[open]>div {
+    animation:motion-reveal 220ms var(--motion-ease) both
+  }
+  .day-detail:not([hidden]),.adjustment-preview:not([hidden]) {
+    animation:motion-reveal 220ms var(--motion-ease) both
+  }
+  .toast:not([hidden]) {
+    animation:motion-toast 240ms var(--motion-ease) both
+  }
+  .motion-date-ink {
+    position:absolute;
+    inset:3px;
+    pointer-events:none;
+    border:1px solid var(--focus);
+    border-radius:3px;
+    z-index:2
+  }
+  @media(hover:hover) and (pointer:fine) {
+    .top-actions>.primary:hover:where(:not(:disabled)),#next-step:hover:not(:disabled),#continue-edit:hover:where(:not(:disabled)) {
+      transform:translateY(-1px);
+      box-shadow:0 3px 8px #302e2914
+    }
+    .top-actions>.primary:active:where(:not(:disabled)),#next-step:active:not(:disabled),#continue-edit:active:where(:not(:disabled)) {
+      transform:translateY(0) scale(.98)
+    }
+  }
+}
+
+/* 选项底板在文字下方移动，点击区域保持固定。 */
+@supports selector(:has(*)) {
+  .adjustment-options {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    position:relative;
+    isolation:isolate
+  }
+  .adjustment-options::before {
+    content:"";
+    position:absolute;
+    top:4px;
+    bottom:4px;
+    left:4px;
+    width:calc((100% - 12px)/2);
+    border-radius:8px;
+    background:var(--paper);
+    box-shadow:0 1px 4px #342c2517;
+    pointer-events:none;
+    z-index:-1;
+    transition:transform var(--motion-medium) var(--motion-ease)
+  }
+  .adjustment-options:has([data-adjustment-kind="makeup"][aria-pressed="true"])::before {
+    transform:translateX(calc(100% + 4px))
+  }
+  .adjustment-options button[aria-pressed="true"] {
+    background:transparent;
+    box-shadow:none
+  }
+  .adjustment-options button:active {
+    transform:none
+  }
+  [data-theme="mist"] .adjustment-options::before {
+    border-radius:9px
+  }
+}
+
+@keyframes motion-menu {
+  from {
+    opacity:0;
+    transform:translateY(-5px) scale(.985)
+  }
+  to {
+    opacity:1;
+    transform:none
+  }
+}
+
+@keyframes motion-reveal {
+  from {
+    opacity:0;
+    transform:translateY(4px)
+  }
+  to {
+    opacity:1;
+    transform:none
+  }
+}
+
+@keyframes motion-toast {
+  from {
+    opacity:0;
+    translate:0 7px
+  }
+  to {
+    opacity:1;
+    translate:0 0
+  }
+}
+
+@media(prefers-reduced-motion:reduce) {
+  *,*::before,*::after {
+    animation:none!important;
+    transition:none!important;
+    scroll-behavior:auto!important
+  }
+  .motion-date-ink {
+    display:none
+  }
+}
+
+@media print {
+  *,*::before,*::after {
+    animation:none!important;
+    transition:none!important;
+    scroll-behavior:auto!important
+  }
+  .motion-date-ink {
+    display:none
+  }
+}

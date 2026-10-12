@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "academicYear": 2023,
+  "half": "autumn",
+  "range": {
+    "start": "2023-07-31",
+    "end": "2024-01-28"
+  },
+  "canvasRange": {
+    "start": "2023-07-01",
+    "end": "2024-02-29"
+  },
+  "firstMonday": "2023-09-18",
+  "firstExams": [
+    "2023-11-11",
+    "2023-11-12",
+    "2023-11-18",
+    "2023-11-19"
+  ],
+  "secondExams": {
+    "start": "2024-01-09",
+    "end": "2024-01-18"
+  },
+  "holidays": [],
+  "adjustments": []
+}

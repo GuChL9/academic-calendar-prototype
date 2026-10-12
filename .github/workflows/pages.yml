@@ -1,0 +1,53 @@
+name: 发布校历
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 测试与构建
+    runs-on: ubuntu-latest
+    steps:
+      - name: 读取源码
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: 准备 Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: 验证规则与交互
+        run: node --test
+      - name: 构建双主题静态页面
+        run: node scripts/build.js
+      - name: 配置 Pages
+        uses: actions/configure-pages@v5
+      - name: 保存站点产物
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    name: 发布网站
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 部署 Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

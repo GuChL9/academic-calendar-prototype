@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "academicYear": 2023,
+  "half": "spring",
+  "range": {
+    "start": "2024-01-29",
+    "end": "2024-07-28"
+  },
+  "canvasRange": {
+    "start": "2024-01-01",
+    "end": "2024-08-31"
+  },
+  "firstMonday": "2024-02-26",
+  "firstExams": [
+    "2024-04-20",
+    "2024-04-21",
+    "2024-04-27",
+    "2024-04-28"
+  ],
+  "secondExams": {
+    "start": "2024-06-18",
+    "end": "2024-06-30"
+  },
+  "holidays": [],
+  "adjustments": []
+}
