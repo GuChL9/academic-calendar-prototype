@@ -179,9 +179,9 @@ export function createRenderer(calendarKeyboard) {
     $('holiday-shared').textContent = shared ? `沿用合并记录“${record.name}”，修改后对应节日会一起更新。` : '';
     const deleting = editingHoliday !== null && !holidaySelection.length;
     const continuing = holidaySelection.length && holidayPreset && nextUnsetHoliday(holidayPreset);
-    $('save-holiday').textContent = deleting ? '删除此项放假' : continuing ? '保存并继续' : editingHoliday === null ? '保存假期' : '保存修改';
+    $('save-holiday').textContent = deleting ? '删除假期' : editingHoliday === null ? '保存假期' : '保存修改';
     $('save-holiday').classList.toggle('danger-button', deleting);
-    setAvailability($('save-holiday'), actionIssue(snapshot, 'holiday-save'), continuing ? '保存并设置下一个节日' : $('save-holiday').textContent);
+    setAvailability($('save-holiday'), actionIssue(snapshot, 'holiday-save'), deleting ? '删除此项放假' : continuing ? '保存并设置下一个节日' : $('save-holiday').textContent);
     const changed = holidayChanged(snapshot);
     // 未设置可跳过，已保存可继续；修改中的取消操作共用同一位置。
     $('skip-holiday').textContent = record ? '下个节日' : '暂时跳过';

@@ -67,8 +67,8 @@
 .settings #holiday-empty { display:flex; align-items:center; justify-content:center; min-height:32px; margin:8px 0 0; line-height:18px; }
 .settings .date-foldout { margin-top:8px; }
 .settings .date-foldout>summary { min-height:32px; padding-block:7px; line-height:18px; }
-.holiday-actions { display:grid; grid-template-columns:minmax(0,108px) 64px 64px; align-content:center; justify-content:center; }
-.holiday-actions #save-holiday { grid-column:1; grid-row:1; padding-inline:4px; white-space:nowrap; }
+.holiday-actions { display:grid; grid-template-columns:max-content 64px 64px; align-content:center; justify-content:center; }
+.holiday-actions #save-holiday { grid-column:1; grid-row:1; justify-self:center; padding-inline:14px; white-space:nowrap; }
 .holiday-actions #skip-holiday,.holiday-actions #cancel-holiday { grid-column:2; grid-row:1; }
 .holiday-actions #custom-holiday { grid-column:3; grid-row:1; }
 .adjustment-summary { display:grid; place-items:center; min-height:32px; margin-top:4px; }
