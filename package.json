@@ -7,12 +7,16 @@
   "exports": {
     ".": "./src/core/index.js",
     "./session": "./src/application/session.js",
-    "./xlsx": "./src/export/xlsx.js"
+    "./xlsx": "./src/export/xlsx.js",
+    "./school-sync": "./src/adapters/node/school-sync.js",
+    "./school-workbook": "./src/import/zju-workbook.js",
+    "./school-catalog": "./src/sources/catalog.js"
   },
   "scripts": {
     "build": "node scripts/build.js",
     "test": "node --test",
-    "start": "node scripts/serve.js"
+    "start": "node scripts/serve.js",
+    "sync": "node scripts/sync-calendars.js"
   },
   "engines": { "node": ">=20" }
 }

@@ -1,6 +1,6 @@
 /** STORE 模式的 ZIP 编码器，使用端可直接生成完整文件。 */
 const enc = new TextEncoder();
-function crc32(bytes) {
+export function crc32(bytes) {
   let crc = 0xffffffff;
   for (const byte of bytes) { crc ^= byte; for (let i = 0; i < 8; i++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1)); }
   return (crc ^ 0xffffffff) >>> 0;

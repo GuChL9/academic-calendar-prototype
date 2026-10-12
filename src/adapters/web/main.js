@@ -7,6 +7,7 @@ import { attachCalendar } from './keyboard.js';
 import { mountMotion } from './motion.js';
 import { mountFeedback } from './feedback.js';
 import { filename, download, readConfiguration } from './files.js';
+import { mountSchoolImport } from './school-import.js';
 
 const $ = id => document.getElementById(id);
 const now = new Date();
@@ -132,3 +133,4 @@ $('file-input').onchange = async event => {
 };
 if (restored.restored) toast('已恢复上次保存在此设备的设置');
 else if (!restored.readable) toast('无法读取本地设置，请打开已保存的配置。', true);
+mountSchoolImport(config => dispatch({ type: 'school-import', config }), () => session.getState().config);

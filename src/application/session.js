@@ -205,9 +205,12 @@ function reduce(state, action) {
       if (modeOf(state) === 'holiday') resetHoliday(state);
       if (modeOf(state) === 'adjustment') resetAdjustment(state);
       break;
+    case 'school-import':
     case 'import':
-      apply(state, action.config, '已打开配置');
+      apply(state, action.config, action.type === 'school-import' ? '已导入校历，可继续编辑或撤销' : '已打开配置');
       state.finished = false; state.selected = null; state.rangeDraft = null;
+      state.anchor = null;
+      if (action.type === 'school-import') { state.step = 6; state.finished = true; }
       resetHoliday(state); resetAdjustment(state);
       break;
     case 'undo':

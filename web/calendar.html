@@ -13,7 +13,7 @@
   </header>
   <main class="workspace">
     <section class="preview" aria-label="校历预览">
-      <div class="preview-heading"><div><h2 id="calendar-title" tabindex="-1"></h2><p id="calendar-subtitle"></p></div><div class="preview-actions"><button id="continue-edit" hidden>继续编辑</button><button id="undo" disabled title="撤销上一次修改">↶ 撤销</button><details id="more-tools" class="more-tools"><summary>更多</summary><div class="tools-popover"><button id="fit-view" class="text-button">紧凑显示</button><button id="export-json" class="text-button">导出日历数据</button><div class="legend" aria-label="图例"><span><i class="legend-exam"></i>考：考试日</span><span><i class="legend-vacation"></i>寒暑假</span><span><i class="legend-holiday"></i>休：放假</span><span>调：对调 · 补：补课</span><span id="range-legend" hidden><i class="legend-range"></i>待应用范围</span></div></div></details></div></div>
+      <div class="preview-heading"><div><h2 id="calendar-title" tabindex="-1"></h2><p id="calendar-subtitle"></p></div><div class="preview-actions"><button id="continue-edit" hidden>继续编辑</button><button id="undo" disabled title="撤销上一次修改">↶ 撤销</button><details id="more-tools" class="more-tools"><summary>更多</summary><div class="tools-popover"><button id="import-school" class="text-button">导入学校校历</button><button id="fit-view" class="text-button">紧凑显示</button><button id="export-json" class="text-button">导出日历数据</button><div class="legend" aria-label="图例"><span><i class="legend-exam"></i>考：考试日</span><span><i class="legend-vacation"></i>寒暑假</span><span><i class="legend-holiday"></i>休：放假</span><span>调：对调 · 补：补课</span><span id="range-legend" hidden><i class="legend-range"></i>待应用范围</span></div></div></details></div></div>
       <div class="canvas">
         <div class="mode-banner" id="mode-banner"><span id="mode-message">点击日期查看详情。</span><button id="exit-mode" class="text-button" hidden>清除本次选择</button></div>
         <div class="calendar-frame">
@@ -31,6 +31,7 @@
           <div><label for="year">学年起始年</label><div class="year-field"><input id="year" type="number" min="1900" max="2198" value="2026"><span id="year-suffix">— 2027 学年</span></div></div>
           <div><label for="half">学期</label><select id="half"><option value="autumn">秋冬学期</option><option value="spring">春夏学期</option></select></div>
         </div>
+        <div class="step-actions"><button id="import-school-start" class="text-button">导入学校校历 ↗</button></div>
       </section>
       <section class="step" aria-labelledby="step-range-title" hidden><h2 id="step-range-title" tabindex="-1"><span>2 / 7</span> 制表范围</h2>
         <p class="calculated" id="selected-range"></p>
@@ -65,6 +66,21 @@
       <nav class="step-navigation" aria-label="切换设置步骤"><button id="previous-step" disabled>上一步</button><button id="next-step" class="primary">下一步：制表范围</button></nav>
     </section>
   </main>
+  <dialog id="school-import" class="import-dialog" aria-labelledby="school-import-title">
+    <div class="import-heading"><h2 id="school-import-title">导入浙大校历</h2><button id="close-school-import" class="text-button" aria-label="关闭导入">关闭</button></div>
+    <div class="import-file"><button id="refresh-school">刷新列表</button><p id="school-import-status" role="status">正在获取学校校历列表…</p></div>
+    <div id="school-year-field" class="import-year" hidden><label for="school-year">学年</label><select id="school-year"></select></div>
+    <div id="school-review" hidden>
+      <div id="school-candidates" class="adjustment-options import-candidates" role="group" aria-label="选择要导入的学期"></div>
+      <p id="school-origin" class="hint"></p>
+      <dl id="school-summary" class="import-summary"></dl>
+      <section id="school-arrangements-section"><h3>放假与调课</h3><p class="hint">勾选要导入的安排</p><div id="school-arrangements"></div></section>
+      <section id="school-notices" class="import-notices" hidden><h3>待核对的说明</h3><ul id="school-notice-list"></ul></section>
+      <details id="school-source-details" class="foldout"><summary>查看校历说明原文</summary><p id="school-source" class="import-source"></p></details>
+      <p class="hint">导入所选学期将替换当前校历，可撤销；导入后可继续编辑。</p>
+    </div>
+    <div class="import-footer"><button id="apply-school-import" class="primary" disabled>导入此学期</button></div>
+  </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <noscript>请使用支持 JavaScript 的浏览器打开本文件。</noscript>
   {{scripts}}

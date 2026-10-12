@@ -12,6 +12,10 @@
 
 本地使用时，在项目根目录执行 `node scripts/build.js`，再打开生成的 `dist/index.html`。
 
+点击第一步卡片或“更多”中的 **导入学校校历**，选择学校已发布的学年和学期，核对后直接导入。程序从浙江大学综合服务网读取官方 Excel，用户无需上传文件。已验证 2023—2024 至 2026—2027 四个学年，可选校历以同步列表为准。导入后可继续编辑或撤销。
+
+GitHub Pages 计划每 6 小时同步一次学校来源。有服务端的部署可以在制作时实时同步，两种方式共用相同的读取与校验模块；离线成品保留已收录校历。操作与接入方式见 [校历导入与同步](docs/校历导入.md)。
+
 按照下方卡片依次完成：
 
 1. 选择学年和秋冬／春夏学期。
@@ -43,10 +47,11 @@
 - [数据与接口](docs/数据与接口.md)：配置格式、逐日字段、导出和跨端调用示例。
 - [开发与发布](docs/开发与发布.md)：目录职责、构建、测试和静态文件部署。
 - [验收场景](docs/验收场景.md)：计算、操作、文件与界面的验收依据。
+- [校历导入](docs/校历导入.md)：学校来源、Excel 读取、结果核对与静态／实时接入。
 
 ## 本地开发
 
-需要 Node.js 20 或更高版本，无第三方运行时依赖。在项目根目录执行：
+需要 Node.js 20 或更高版本，无需安装依赖包。在项目根目录执行：
 
 ```sh
 node --test
@@ -54,15 +59,19 @@ node scripts/build.js
 node scripts/serve.js
 ```
 
-`node scripts/serve.js` 启动本机预览，地址为 `http://127.0.0.1:4175`。构建结果位于 `dist/`，首页为 `index.html`。将完整的 `dist/` 内容作为静态站点发布即可保留风格选择页和两套界面。
+`node scripts/serve.js` 启动本机预览，地址为 `http://127.0.0.1:4175`。本机服务默认在打开导入面板时实时同步学校校历。`node scripts/sync-calendars.js` 可单独同步目录。构建结果位于 `dist/`，首页为 `index.html`。将完整的 `dist/` 内容作为静态站点发布即可保留风格选择页和两套界面。
 
-GitHub Pages 通过 [发布工作流](.github/workflows/pages.yml) 自动部署：更新 `main` 分支后，先运行测试，再构建并发布 `dist/`。
+GitHub Pages 通过 [发布工作流](.github/workflows/pages.yml) 自动部署：更新 `main` 分支后，先运行测试、同步学校校历，再构建并发布 `dist/`；计划每 6 小时再次同步。
 
 ```text
 src/core/           日期、规则、逐日计算与表格布局
 src/application/    制表会话、草稿、导航、撤销与偏好
 src/adapters/web/   页面呈现、输入、存储、文件与动画
 src/export/         Excel、XML 与 ZIP 编码
+src/import/         学校工作表与安排说明识别
+src/sources/        学校列表和共享目录接口
+src/adapters/node/  Excel 读取与实时同步服务
+data/               已验证的官方校历目录
 web/               页面模板、主题样式与预览图片
 examples/          可打开的秋冬、春夏配置样例
 tests/             规则、交互、恢复、导出与构建测试
