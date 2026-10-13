@@ -350,7 +350,7 @@ test('考试只选首日时保留已保存区间并阻止继续', () => {
 });
 
 
-test('从新建入口打开配置直接进入编辑步骤', () => {
+test('从新建入口打开校历直接进入编辑步骤', () => {
   const session = createSession(blankConfig(2023));
   assert.equal(act(session, 'import', { config: examples.autumn }).step, 1);
 });

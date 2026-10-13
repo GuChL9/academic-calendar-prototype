@@ -11,6 +11,6 @@ export function download(contents, type, name) {
   setTimeout(() => URL.revokeObjectURL(url), 15000);
 }
 export async function readConfiguration(file) {
-  if (file.size > 2 * 1024 * 1024) throw new Error('配置文件不能超过 2 MB');
+  if (file.size > 2 * 1024 * 1024) throw new Error('校历文件不能超过 2 MB');
   return parseConfig(await file.text());
 }

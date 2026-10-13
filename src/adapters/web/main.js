@@ -31,7 +31,7 @@ function toast(message, error = false) {
 }
 function remember(state, configChanged) {
   if (configChanged && !repository.saveConfig(state.config)) {
-    toast('自动保存失败，请保存配置文件以保留设置。', true);
+    toast('自动保存失败，请保存校历文件以保留设置。', true);
     return false;
   }
   const saved = repository.saveView(state);
@@ -158,12 +158,7 @@ document.addEventListener('keydown', event => {
 $('save-config').onclick = () => {
   closeConfigMenu(true);
   const config = session.getState().config;
-  download(JSON.stringify(config, null, 2), 'application/json;charset=utf-8', filename(config, '-配置.json'));
-};
-$('export-json').onclick = () => {
-  $('more-tools').open = false;
-  const config = session.getState().config;
-  download(JSON.stringify(C.exportData(config), null, 2), 'application/json;charset=utf-8', filename(config, '-数据.json'));
+  download(JSON.stringify(C.exportData(config), null, 2), 'application/json;charset=utf-8', filename(config, '.json'));
 };
 $('export-xlsx').onclick = () => {
   try {
@@ -181,6 +176,6 @@ $('file-input').onchange = async event => {
   finally { event.target.value = ''; }
 };
 if (restored.restored) toast('已恢复上次保存在此设备的设置');
-else if (!restored.readable) toast('无法读取本地设置，请打开已保存的配置。', true);
+else if (!restored.readable) toast('无法读取本地设置，请打开已保存的校历。', true);
 schoolImport = mountSchoolImport((config, source) => dispatch({ type: 'school-import', config, source }, true), () => session.getState());
 stepNavigation = mountStepNavigation(index => dispatch({ type: 'go-to-step', index }, true), () => session.getState());

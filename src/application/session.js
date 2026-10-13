@@ -305,7 +305,7 @@ function reduce(state, action) {
       break;
     case 'school-import':
     case 'import':
-      apply(state, action.config, action.type === 'school-import' ? '已导入校历，可逐步核对' : '已打开配置', action.type === 'school-import' ? action.source ?? null : null);
+      apply(state, action.config, action.type === 'school-import' ? '已导入校历，可逐步核对' : '已打开校历', action.type === 'school-import' ? action.source ?? null : null);
       state.finished = false; state.selected = null; state.rangeDraft = null;
       state.anchor = null;
       state.entryReturn = null;
