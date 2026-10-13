@@ -45,6 +45,12 @@
 .step-track button:hover:where(:not(:disabled)) .step-dot { border-color:var(--navy); }
 .step-track button:disabled { opacity:1; color:var(--muted); cursor:default; }
 .step-track button:disabled .step-dot { color:var(--muted); background:var(--soft); }
+@media(max-width:600px) {
+  /* 每屏约三到四步；边缘淡出提示还有内容，触摸滚动保持原生行为。 */
+  .step-track { position:relative; grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:max(76px,28%); overflow-x:auto; overflow-y:hidden; padding-block:4px; overscroll-behavior-x:contain; scrollbar-width:none; mask-image:linear-gradient(to right,transparent,#000 var(--step-fade-left,0px),#000 calc(100% - var(--step-fade-right,0px)),transparent); }
+  .step-track::-webkit-scrollbar { display:none; }
+  .step-track button { min-height:44px; font-size:12px; }
+}
 .settings .mode-banner { justify-content:center; flex-wrap:wrap; gap:4px 12px; min-height:0; padding:0; margin:0 0 12px; text-align:center; font-size:12px; line-height:1.7; }
 .settings .mode-banner .text-button { min-height:28px; padding:2px 6px; margin-left:0; }
 .toast { top:16px; right:16px; bottom:auto; left:auto; transform:none; max-width:min(420px,calc(100vw - 32px)); pointer-events:none; }
