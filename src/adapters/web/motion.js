@@ -1,7 +1,6 @@
 export function mountMotion() {
   'use strict';
   // 数据同步提交，动画负责布局和视口的连续变化。
-  if (!Element.prototype.animate) return { navigate: update => update(), position: target => target.scrollIntoView({block: "nearest"}) };
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
   const printing = window.matchMedia('print');
   const root = document.documentElement;
@@ -12,11 +11,24 @@ export function mountMotion() {
   const canvas = document.querySelector('.canvas');
   const running = new Set();
   const byElement = new WeakMap();
-  const allowed = () => !reduce.matches && !printing.matches && !document.hidden;
+  const narrow = window.matchMedia('(max-width: 700px)');
+  const allowed = () => Boolean(Element.prototype.animate) && !reduce.matches && !printing.matches && !document.hidden;
   const ease = 'cubic-bezier(.22,1,.36,1)';
   const duration = root.dataset.theme === 'mist' ? 280 : 340;
   let navigation = null;
   let pendingPosition = null;
+
+  function dateScrollTarget(date) {
+    const start = calendar.scrollLeft;
+    if (!date || !narrow.matches) return start;
+    const button = calendar.querySelector(`[data-date="${date}"]`);
+    if (!button) return start;
+    const viewport = calendar.getBoundingClientRect(), cell = button.getBoundingClientRect();
+    const left = Math.max(viewport.left, calendar.querySelector('.weekday')?.getBoundingClientRect().right || viewport.left);
+    const right = viewport.left + calendar.clientWidth;
+    if (cell.left >= left && cell.right <= right) return start;
+    return Math.max(0, Math.min(calendar.scrollWidth - calendar.clientWidth, start + (cell.left + cell.right - left - right) / 2));
+  }
 
   function captureCalendar() {
     if (!allowed()) return null;
@@ -109,8 +121,10 @@ export function mountMotion() {
       endY = Math.max(0,Math.min(targetTop-24,maxY));
     }
     const calendarChanged = prepareCalendar(state, previousCalendar);
-    const unchanged = !calendarChanged && state.boxes.every(item => Math.abs(item.end-item.start)<.5) && Math.abs(endY-startY)<1 && Math.abs(calendarDelta)<.5;
-    if (!allowed() || unchanged) { restoreNavigation(); window.scrollTo({top:endY,behavior:'auto'}); return; }
+    // 横向定位与卡片、页面使用同一时间线；手动操作中止后保留当前滚动位置。
+    const startX = calendar.scrollLeft, endX = dateScrollTarget(state.date);
+    const unchanged = !calendarChanged && state.boxes.every(item => Math.abs(item.end-item.start)<.5) && Math.abs(endY-startY)<1 && Math.abs(calendarDelta)<.5 && Math.abs(endX-startX)<1;
+    if (!allowed() || unchanged) { restoreNavigation(); calendar.scrollLeft = endX; window.scrollTo({top:endY,behavior:'auto'}); return; }
     document.body.style.minHeight = Math.max(documentHeight,root.scrollHeight)+'px';
     for (const item of state.boxes) item.element.style.height = item.start+'px';
     if (calendarChanged || Math.abs(calendarDelta)>.5) calendar.style.transform = `translate(${state.calendarX}px,${calendarDelta}px)`;
@@ -130,6 +144,7 @@ export function mountMotion() {
         state.outgoing.style.opacity = String(1-eased);
         state.outgoing.style.transform = `translateX(${-state.calendarX*eased}px)`;
       }
+      calendar.scrollLeft = startX + (endX - startX) * eased;
       window.scrollTo({top:startY+(endY-startY)*eased,behavior:'auto'});
       if (progress < 1) state.frame = requestAnimationFrame(tick);
       else { restoreNavigation(); window.scrollTo({top:endY,behavior:'auto'}); }
@@ -140,13 +155,18 @@ export function mountMotion() {
     if (pendingPosition) pendingPosition.target = target;
     else navigate(() => { pendingPosition.target = target; });
   }
+  function positionDate(date, immediate = false) {
+    if (pendingPosition) pendingPosition.date = date;
+    else if (immediate) calendar.scrollLeft = dateScrollTarget(date);
+    else navigate(() => { pendingPosition.date = date; });
+  }
   // 手动滚动优先；连续导航从当前帧开始。
   window.addEventListener('wheel',restoreNavigation,{passive:true});
   window.addEventListener('touchstart',restoreNavigation,{passive:true});
   window.addEventListener('resize',restoreNavigation,{passive:true});
   calendar.addEventListener('pointerdown',restoreNavigation,{passive:true});
   document.addEventListener('keydown',event => {
-    if (['PageUp','PageDown','Home','End','ArrowUp','ArrowDown','Escape','Tab'].includes(event.key)) restoreNavigation();
+    if (['PageUp','PageDown','Home','End','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Escape','Tab'].includes(event.key)) restoreNavigation();
   });
 
   function play(element, frames, milliseconds = duration, delay = 0, cleanup) {
@@ -216,5 +236,5 @@ export function mountMotion() {
   reveal(document.querySelector('.preview-heading'), 6, 30);
   reveal(canvas, 9, 60);
   reveal(settings, 9, 90);
-  return { navigate, position };
+  return { navigate, position, positionDate };
 }

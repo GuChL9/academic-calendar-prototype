@@ -10,6 +10,7 @@ import { filename, download, readConfiguration } from './files.js';
 import { mountSchoolImport } from './school-import.js';
 import { mountStepNavigation } from './step-navigation.js';
 import { captureFocus, restoreFocus } from './controls.js';
+import { calendarFocusDate } from '../../application/view-target.js';
 
 const $ = id => document.getElementById(id);
 const now = new Date();
@@ -30,7 +31,7 @@ function toast(message, error = false) {
 }
 function remember(state, configChanged) {
   if (configChanged && !repository.saveConfig(state.config)) {
-    toast('自动保存失败，请点击“保存配置”保留设置。', true);
+    toast('自动保存失败，请保存配置文件以保留设置。', true);
     return false;
   }
   const saved = repository.saveView(state);
@@ -42,6 +43,13 @@ render(session.getState());
 remember(session.getState(), false);
 const motion = mountMotion();
 const feedback = mountFeedback();
+motion.positionDate(calendarFocusDate(session.getState()), true);
+
+function closeConfigMenu(returnFocus = false) {
+  $('config-tools').classList.remove('is-open');
+  $('config-menu-toggle').setAttribute('aria-expanded', 'false');
+  if (returnFocus && $('config-menu-toggle').getClientRects().length) $('config-menu-toggle').focus({ preventScroll: true });
+}
 
 /** 用户动作只进入一个制表会话；呈现、持久化和焦点处理消费同一结果。 */
 function dispatch(action, navigation = false) {
@@ -53,10 +61,14 @@ function dispatch(action, navigation = false) {
     schoolImport?.update(state);
     stepNavigation?.update(state);
     feedback?.refreshLayout();
+    if (state.step !== before.step || (before.finished && !state.finished) || ['import', 'school-import'].includes(action.type)) {
+      motion.positionDate(calendarFocusDate(state));
+    }
     const saved = remember(state, state.revision !== before.revision);
     if (state.message && saved) toast(state.message);
     if (action.type === 'select-date') keyboard.focusDate(action.date);
     if (navigation) {
+      closeConfigMenu();
       $('more-tools').open = false;
       const title = state.finished ? $('calendar-title') : document.querySelector('.step:not([hidden]) h2');
       title.focus({ preventScroll: true });
@@ -113,14 +125,38 @@ for (const kind of ['holiday', 'adjustment']) {
   delegate(kind + '-list', 'data-edit-' + kind, index => ({ type: kind + '-edit', index: Number(index) }));
   delegate(kind + '-list', 'data-delete-' + kind, index => ({ type: kind + '-delete', index: Number(index) }));
 }
-document.addEventListener('click', event => { if (!$('more-tools').contains(event.target)) $('more-tools').open = false; });
+$('config-menu-toggle').onclick = () => {
+  const open = $('config-tools').classList.toggle('is-open');
+  $('config-menu-toggle').setAttribute('aria-expanded', String(open));
+  if (open) $('more-tools').open = false;
+};
+window.matchMedia('(max-width: 700px)').addEventListener('change', event => {
+  const focused = document.activeElement;
+  closeConfigMenu();
+  if (event.matches && $('config-actions').contains(focused)) $('config-menu-toggle').focus({ preventScroll:true });
+  else if (!event.matches && focused === $('config-menu-toggle')) $('open-config').focus({ preventScroll:true });
+});
+document.addEventListener('click', event => {
+  if (!$('more-tools').contains(event.target)) $('more-tools').open = false;
+  if (!$('config-tools').contains(event.target)) closeConfigMenu();
+});
+$('config-tools').addEventListener('focusout', event => {
+  if ($('config-tools').contains(event.relatedTarget)) return;
+  closeConfigMenu();
+  // 断点切换会隐藏原控件，焦点跟随到同一组的可见入口。
+  if (!event.relatedTarget && !event.target.getClientRects().length) {
+    ($('config-menu-toggle').getClientRects().length ? $('config-menu-toggle') : $('open-config')).focus({ preventScroll:true });
+  }
+});
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return;
-  if ($('more-tools').open) { $('more-tools').open = false; $('more-tools').querySelector('summary').focus(); }
+  if ($('config-tools').classList.contains('is-open')) closeConfigMenu(true);
+  else if ($('more-tools').open) { $('more-tools').open = false; $('more-tools').querySelector('summary').focus(); }
   else if (schoolImport && session.getState().step === 0) { schoolImport.cancel(); dispatch({ type: 'cancel-new' }, true); }
   else dispatch({ type: 'escape' });
 });
 $('save-config').onclick = () => {
+  closeConfigMenu(true);
   const config = session.getState().config;
   download(JSON.stringify(config, null, 2), 'application/json;charset=utf-8', filename(config, '-配置.json'));
 };
@@ -136,7 +172,7 @@ $('export-xlsx').onclick = () => {
     toast(C.status(config).complete ? '已导出校历与逐日数据' : '已导出草稿，尚未完成的设置已标明');
   } catch (error) { toast(error.message, true); }
 };
-$('open-config').onclick = () => $('file-input').click();
+$('open-config').onclick = () => { closeConfigMenu(true); $('file-input').click(); };
 $('file-input').onchange = async event => {
   const file = event.target.files[0];
   if (!file) return;

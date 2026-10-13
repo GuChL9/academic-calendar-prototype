@@ -23,8 +23,9 @@ export function createRenderer(calendarKeyboard) {
     $('new-calendar').hidden = currentStep === 0 && !finished;
     $('cancel-new').hidden = !snapshot.entryReturn;
     $('previous-step').disabled = currentStep === 0;
-    $('next-step').textContent = currentStep < steps.length - 1 ? `下一步：${names[currentStep + 1]}` : '完成制表';
-    setAvailability($('next-step'), actionIssue(snapshot, 'next'));
+    const nextLabel = currentStep < steps.length - 1 ? `下一步：${names[currentStep + 1]}` : '完成制表';
+    $('next-step').innerHTML = `<span class="navigation-full" aria-hidden="true">${nextLabel}</span><span class="navigation-short" aria-hidden="true">${currentStep < steps.length - 1 ? '下一步' : '完成制表'}</span>`;
+    setAvailability($('next-step'), actionIssue(snapshot, 'next'), nextLabel);
     // 当前卡片只强调一个提交操作；草稿处理完毕后将重点交还给继续流程。
     const savingHoliday = currentStep === 5 && holidayChanged(snapshot);
     const savingAdjustment = currentStep === 6 && (adjustmentSelection.some(Boolean) || editingAdjustment !== null);
@@ -195,7 +196,9 @@ export function createRenderer(calendarKeyboard) {
     for (const button of $('adjustment-kind').querySelectorAll('button')) button.setAttribute('aria-pressed', String(button.dataset.adjustmentKind === adjustmentKind));
     const [a,b] = adjustmentSelection;
     $('adjustment-preview').hidden = mode !== 'adjustment' || (!a && !b);
-    $('adjustment-preview').textContent = a && b ? `${makeup?`${formatDisplayDate(a)} 补 ${formatDisplayDate(b)} 的课程`:`${formatDisplayDate(a)} ↔ ${formatDisplayDate(b)}`} · 未保存` : a ? `${makeup?'实际补课日':'日期 A'}：${formatDisplayDate(a)}` : b ? `${makeup?'原课程日':'日期 B'}：${formatDisplayDate(b)}` : '';
+    // 紧凑日期保留完整年份，使跨年关系也能在窄屏摘要行中读清。
+    const dateText = date => date.replaceAll('-', '/');
+    $('adjustment-preview').textContent = a && b ? `${dateText(a)} ${makeup ? '补' : '↔'} ${dateText(b)} · 未保存` : a ? `${makeup?'实际补课日':'日期 A'}：${dateText(a)}` : b ? `${makeup?'原课程日':'日期 B'}：${dateText(b)}` : '';
     $('clear-adjustment').hidden = !a && !b;
     $('adjustment-hint').textContent = makeup ? '补课只调整实际补课日，原日期不变。' : '';
     $('adjustment-hint').hidden = !$('adjustment-hint').textContent || Boolean(a || b);
